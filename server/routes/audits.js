@@ -1,0 +1,94 @@
+const express = require('express');
+const Audit = require('../models/Audit');
+const { requireAuth, requireRole } = require('../middleware/auth');
+
+const router = express.Router();
+
+function isImageDataUrl(value) {
+  return typeof value === 'string' && value.startsWith('data:image/');
+}
+
+function validateStages(stages) {
+  if (!Array.isArray(stages) || stages.length === 0) {
+    return 'stages must be a non-empty array';
+  }
+  for (const stage of stages) {
+    if (!stage.stageId || !stage.stageName || !Array.isArray(stage.questions)) {
+      return 'each stage requires stageId, stageName, and a questions array';
+    }
+    for (const q of stage.questions) {
+      if (!q.questionId || !q.questionText || !['yes', 'no'].includes(q.answer)) {
+        return 'each question requires questionId, questionText, and answer of yes/no';
+      }
+      if (q.answer === 'no' && !q.reason?.trim()) {
+        return `a reason is required when the answer is "no" (question: ${q.questionText})`;
+      }
+      if (q.photos && (!Array.isArray(q.photos) || !q.photos.every(isImageDataUrl))) {
+        return `invalid photos for question: ${q.questionText}`;
+      }
+    }
+  }
+  return null;
+}
+
+// POST /api/audits - auditor submits a completed audit form
+router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
+  const { atmId, area, photos, stages } = req.body;
+
+  if (!atmId || !atmId.trim()) {
+    return res.status(400).json({ message: 'atmId is required' });
+  }
+
+  if (!area || !area.trim()) {
+    return res.status(400).json({ message: 'area is required' });
+  }
+
+  if (!Array.isArray(photos) || photos.length === 0 || !photos.every(isImageDataUrl)) {
+    return res.status(400).json({ message: 'At least one ATM photo is required to start the audit' });
+  }
+
+  const validationError = validateStages(stages);
+  if (validationError) {
+    return res.status(400).json({ message: validationError });
+  }
+
+  const audit = await Audit.create({
+    atmId: atmId.trim(),
+    area: area.trim(),
+    auditor: req.user.id,
+    photos,
+    stages,
+  });
+
+  res.status(201).json(audit);
+});
+
+// GET /api/audits/mine - auditor views their own submitted audits
+router.get('/mine', requireAuth, requireRole('auditor'), async (req, res) => {
+  const audits = await Audit.find({ auditor: req.user.id }).sort({ createdAt: -1 });
+  res.json(audits);
+});
+
+// GET /api/audits - admin views all audits, with auditor name + atmId populated
+router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
+  const audits = await Audit.find()
+    .select('-photos -stages')
+    .populate('auditor', 'name username')
+    .sort({ createdAt: -1 });
+  res.json(audits);
+});
+
+// GET /api/audits/:id - admin (or the owning auditor) views one full form
+router.get('/:id', requireAuth, async (req, res) => {
+  const audit = await Audit.findById(req.params.id).populate('auditor', 'name username');
+  if (!audit) return res.status(404).json({ message: 'Audit not found' });
+
+  const isOwner = audit.auditor?._id.toString() === req.user.id;
+  if (req.user.role !== 'admin' && !isOwner) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  res.json(audit);
+});
+
+module.exports = router;
