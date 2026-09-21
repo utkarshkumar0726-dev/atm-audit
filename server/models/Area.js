@@ -1,10 +1,34 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
 
-const areaSchema = new mongoose.Schema(
+const Area = sequelize.define(
+  'Area',
   {
-    name: { type: String, required: true, unique: true, trim: true },
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      validate: { notEmpty: true },
+      set(val) {
+        this.setDataValue('name', val ? val.trim() : val);
+      },
+    },
   },
-  { timestamps: true }
+  {
+    tableName: 'areas',
+    timestamps: true,
+  }
 );
 
-module.exports = mongoose.model('Area', areaSchema);
+Area.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  values._id = values.id;
+  return values;
+};
+
+module.exports = Area;

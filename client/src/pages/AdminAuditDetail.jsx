@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../api/client';
 import Topbar from '../components/Topbar';
+import PhotoLightbox from '../components/PhotoLightbox';
 
 export default function AdminAuditDetail() {
   const { id } = useParams();
   const [audit, setAudit] = useState(null);
   const [error, setError] = useState('');
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
 
   useEffect(() => {
     api
@@ -61,7 +63,7 @@ export default function AdminAuditDetail() {
           <div className="photo-grid photo-grid-view">
             {audit.photos.map((p, i) => (
               <div className="photo-grid-item" key={i}>
-                <img src={p} alt={`ATM ${audit.atmId} ${i + 1}`} />
+                <img src={p} alt={`ATM ${audit.atmId} ${i + 1}`} onClick={() => setLightboxPhoto(p)} />
               </div>
             ))}
           </div>
@@ -79,7 +81,7 @@ export default function AdminAuditDetail() {
                   <div className="photo-grid photo-grid-view">
                     {q.photos.map((p, i) => (
                       <div className="photo-grid-item" key={i}>
-                        <img src={p} alt="Attached" />
+                        <img src={p} alt="Attached" onClick={() => setLightboxPhoto(p)} />
                       </div>
                     ))}
                   </div>
@@ -89,6 +91,8 @@ export default function AdminAuditDetail() {
           </div>
         ))}
       </div>
+
+      {lightboxPhoto && <PhotoLightbox src={lightboxPhoto} onClose={() => setLightboxPhoto(null)} />}
     </div>
   );
 }

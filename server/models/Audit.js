@@ -1,34 +1,49 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
 
-const questionAnswerSchema = new mongoose.Schema(
+const Audit = sequelize.define(
+  'Audit',
   {
-    questionId: { type: String, required: true },
-    questionText: { type: String, required: true },
-    answer: { type: String, enum: ['yes', 'no'], required: true },
-    reason: { type: String, default: '' },
-    photos: { type: [String], default: [] },
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    atmId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: { notEmpty: true },
+    },
+    area: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: { notEmpty: true },
+    },
+    auditorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    photos: {
+      type: DataTypes.JSON,
+      allowNull: false,
+      defaultValue: [],
+    },
+    stages: {
+      type: DataTypes.JSON,
+      allowNull: false,
+      defaultValue: [],
+    },
   },
-  { _id: false }
+  {
+    tableName: 'audits',
+    timestamps: true,
+  }
 );
 
-const stageSchema = new mongoose.Schema(
-  {
-    stageId: { type: String, required: true },
-    stageName: { type: String, required: true },
-    questions: { type: [questionAnswerSchema], required: true },
-  },
-  { _id: false }
-);
+Audit.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  values._id = values.id;
+  return values;
+};
 
-const auditSchema = new mongoose.Schema(
-  {
-    atmId: { type: String, required: true, trim: true },
-    area: { type: String, required: true, trim: true },
-    auditor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    photos: { type: [String], required: true },
-    stages: { type: [stageSchema], required: true },
-  },
-  { timestamps: true }
-);
-
-module.exports = mongoose.model('Audit', auditSchema);
+module.exports = Audit;

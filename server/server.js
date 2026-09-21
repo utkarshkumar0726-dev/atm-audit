@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const connectDB = require('./config/db');
+const { connectDB } = require('./config/db');
 const authRoutes = require('./routes/auth');
 const auditRoutes = require('./routes/audits');
 const areaRoutes = require('./routes/areas');
@@ -27,15 +27,15 @@ app.use('/api/atms', atmRoutes);
 app.use('/api/checklist', checklistRoutes);
 app.use('/api/assignments', assignmentRoutes);
 
-app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.get('/api/health', (req, res) => res.json({ ok: true, database: 'mysql' }));
 
 const PORT = process.env.PORT || 5000;
 
 connectDB()
   .then(() => {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    app.listen(PORT, () => console.log(`Server running on port ${PORT} (MySQL Connected)`));
   })
   .catch((err) => {
-    console.error('Failed to connect to MongoDB', err);
+    console.error('Failed to connect to MySQL database:', err);
     process.exit(1);
   });

@@ -20,3 +20,5 @@ logs
 .idea
 .DS_Store
 *.local
+.vercel
+.env*

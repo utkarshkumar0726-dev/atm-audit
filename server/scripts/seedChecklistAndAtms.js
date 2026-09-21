@@ -1,10 +1,6 @@
 require('dotenv').config();
-const mongoose = require('mongoose');
-const connectDB = require('../config/db');
-const Area = require('../models/Area');
-const Atm = require('../models/Atm');
-const Stage = require('../models/Stage');
-const ChecklistQuestion = require('../models/ChecklistQuestion');
+const { connectDB, sequelize } = require('../config/db');
+const { Area, Atm, Stage, ChecklistQuestion } = require('../models');
 
 const AREA_NAMES = ['North Zone', 'South Zone', 'East Zone', 'West Zone', 'Central Zone'];
 
@@ -41,36 +37,39 @@ const CHECKLIST = [
 async function seed() {
   await connectDB();
 
-  if ((await Area.countDocuments()) === 0) {
-    await Area.insertMany(AREA_NAMES.map((name) => ({ name })));
+  const areaCount = await Area.count();
+  if (areaCount === 0) {
+    await Area.bulkCreate(AREA_NAMES.map((name) => ({ name })));
     console.log(`Seeded ${AREA_NAMES.length} areas`);
   } else {
     console.log('Areas already exist, skipping');
   }
 
-  if ((await Atm.countDocuments()) === 0) {
-    const areas = await Area.find();
+  const atmCount = await Atm.count();
+  if (atmCount === 0) {
+    const areas = await Area.findAll();
     const atms = Array.from({ length: 100 }, (_, i) => {
       const area = areas[i % areas.length];
       const branchNumber = Math.floor(i / areas.length) + 1;
       return {
         atmId: `ATM-${1001 + i}`,
-        area: area._id,
+        areaId: area.id,
         location: `${area.name} - Branch ${branchNumber}`,
       };
     });
-    await Atm.insertMany(atms);
+    await Atm.bulkCreate(atms);
     console.log(`Seeded ${atms.length} ATMs`);
   } else {
     console.log('ATMs already exist, skipping');
   }
 
-  if ((await Stage.countDocuments()) === 0) {
+  const stageCount = await Stage.count();
+  if (stageCount === 0) {
     for (let i = 0; i < CHECKLIST.length; i++) {
       const { stageName, questions } = CHECKLIST[i];
       const stage = await Stage.create({ name: stageName, order: i });
-      await ChecklistQuestion.insertMany(
-        questions.map((text, qi) => ({ stage: stage._id, text, order: qi }))
+      await ChecklistQuestion.bulkCreate(
+        questions.map((text, qi) => ({ stageId: stage.id, text, order: qi }))
       );
     }
     console.log(`Seeded ${CHECKLIST.length} stages with questions`);
@@ -78,11 +77,11 @@ async function seed() {
     console.log('Checklist stages already exist, skipping');
   }
 
-  await mongoose.disconnect();
+  await sequelize.close();
   process.exit(0);
 }
 
 seed().catch((err) => {
-  console.error(err);
+  console.error('Seeding error:', err);
   process.exit(1);
 });

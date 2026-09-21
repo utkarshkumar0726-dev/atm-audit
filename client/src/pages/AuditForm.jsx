@@ -3,6 +3,7 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Topbar from '../components/Topbar';
 import CameraCapture from '../components/CameraCapture';
+import PhotoLightbox from '../components/PhotoLightbox';
 
 // Live in-browser camera capture needs a secure context (https, or localhost).
 // Over plain http on a LAN IP (needed so phones can reach a dev server) it's
@@ -68,6 +69,38 @@ async function compressFiles(fileList) {
 
 const MAX_ATM_RESULTS = 20;
 
+// Keeps an in-progress audit across accidental refreshes/tab closes. Best-effort:
+// wrapped in try/catch since private browsing or a full quota (lots of photos)
+// can make localStorage throw — worst case we just fall back to a blank form.
+function draftKey(userId) {
+  return `atm-audit-draft-${userId}`;
+}
+
+function loadDraft(userId) {
+  try {
+    const raw = localStorage.getItem(draftKey(userId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(userId, draft) {
+  try {
+    localStorage.setItem(draftKey(userId), JSON.stringify(draft));
+  } catch {
+    // ignore — progress just won't survive a refresh this time
+  }
+}
+
+function clearDraft(userId) {
+  try {
+    localStorage.removeItem(draftKey(userId));
+  } catch {
+    // ignore
+  }
+}
+
 export default function AuditForm() {
   const { user, logout } = useAuth();
   const cameraInputRef = useRef(null);
@@ -94,17 +127,39 @@ export default function AuditForm() {
   const [success, setSuccess] = useState(false);
   const [activePhotoQuestionId, setActivePhotoQuestionId] = useState(null);
   const [cameraTarget, setCameraTarget] = useState(null); // null | 'main' | questionId
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
 
   useEffect(() => {
     Promise.all([api.get('/checklist'), api.get('/atms/mine')])
       .then(([checklistRes, atmsRes]) => {
         setChecklistStages(checklistRes.data);
         setAssignedAtms(atmsRes.data);
-        setStages(buildInitialStages(checklistRes.data));
+
+        const draft = user?.id ? loadDraft(user.id) : null;
+        if (draft?.selectedAtm) {
+          setSelectedAtm(draft.selectedAtm);
+          setPhotos(draft.photos || []);
+          setStages(draft.stages?.length ? draft.stages : buildInitialStages(checklistRes.data));
+          setStageIndex(draft.stageIndex || 0);
+          setStarted(!!draft.started);
+        } else {
+          setStages(buildInitialStages(checklistRes.data));
+        }
       })
       .catch((err) => setLoadError(err.response?.data?.message || 'Failed to load audit setup'))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Persist progress so a refresh or accidental tab close doesn't lose it.
+  useEffect(() => {
+    if (!user?.id || loading) return;
+    if (!selectedAtm && photos.length === 0 && !started) {
+      clearDraft(user.id);
+      return;
+    }
+    saveDraft(user.id, { selectedAtm, photos, stages, stageIndex, started });
+  }, [user?.id, loading, selectedAtm, photos, stages, stageIndex, started]);
 
   const currentStage = stages[stageIndex];
   const isLastStage = stageIndex === stages.length - 1;
@@ -305,6 +360,7 @@ export default function AuditForm() {
         photos,
         stages,
       });
+      if (user?.id) clearDraft(user.id);
       setSuccess(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to submit audit');
@@ -405,6 +461,36 @@ export default function AuditForm() {
             </label>
           )}
 
+          {selectedAtm && (
+            <div style={{ background: '#f1f5f9', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '12px 16px', margin: '14px 0', fontSize: '0.88rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+                <strong>📍 {selectedAtm.branchName || selectedAtm.location || selectedAtm.atmId}</strong>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {selectedAtm.vendor && <span className="role-badge">{selectedAtm.vendor}</span>}
+                  {selectedAtm.siteType && <span className="role-badge" style={{ background: '#e2e8f0', color: '#334155' }}>{selectedAtm.siteType}</span>}
+                </div>
+              </div>
+              {selectedAtm.address && <div style={{ color: 'var(--color-text-muted)', marginBottom: 6 }}>{selectedAtm.address}</div>}
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '0.82rem' }}>
+                {selectedAtm.inchargeName && (
+                  <span>
+                    👤 <strong>In-Charge:</strong> {selectedAtm.inchargeName} {selectedAtm.inchargeDesig && `(${selectedAtm.inchargeDesig})`}
+                  </span>
+                )}
+                {selectedAtm.inchargeContact && (
+                  <span>
+                    📞 <strong>Contact:</strong> <a href={`tel:${selectedAtm.inchargeContact}`}>{selectedAtm.inchargeContact}</a>
+                  </span>
+                )}
+                {selectedAtm.bic && (
+                  <span>
+                    🏷️ <strong>BIC:</strong> {selectedAtm.bic}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="photo-capture">
             <span className="photo-capture-label">
               ATM Photos <span className="photo-hint">(at least 1 required before you can start)</span>
@@ -414,8 +500,15 @@ export default function AuditForm() {
               <div className="photo-grid">
                 {photos.map((p, i) => (
                   <div className="photo-grid-item" key={i}>
-                    <img src={p} alt={`ATM ${i + 1}`} />
-                    <button type="button" className="photo-remove-btn" onClick={() => removePhoto(i)}>
+                    <img src={p} alt={`ATM ${i + 1}`} onClick={() => setLightboxPhoto(p)} />
+                    <button
+                      type="button"
+                      className="photo-remove-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removePhoto(i);
+                      }}
+                    >
                       &times;
                     </button>
                   </div>
@@ -484,6 +577,7 @@ export default function AuditForm() {
         </div>
 
         {cameraTarget && <CameraCapture onCapture={handleCameraCapture} onClose={() => setCameraTarget(null)} />}
+        {lightboxPhoto && <PhotoLightbox src={lightboxPhoto} onClose={() => setLightboxPhoto(null)} />}
       </div>
     );
   }
@@ -563,11 +657,14 @@ export default function AuditForm() {
                   <div className="photo-grid">
                     {q.photos.map((p, i) => (
                       <div className="photo-grid-item" key={i}>
-                        <img src={p} alt="Attached" />
+                        <img src={p} alt="Attached" onClick={() => setLightboxPhoto(p)} />
                         <button
                           type="button"
                           className="photo-remove-btn"
-                          onClick={() => removeQuestionPhoto(q.questionId, i)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeQuestionPhoto(q.questionId, i);
+                          }}
                         >
                           &times;
                         </button>
@@ -632,6 +729,7 @@ export default function AuditForm() {
       </div>
 
       {cameraTarget && <CameraCapture onCapture={handleCameraCapture} onClose={() => setCameraTarget(null)} />}
+      {lightboxPhoto && <PhotoLightbox src={lightboxPhoto} onClose={() => setLightboxPhoto(null)} />}
     </div>
   );
 }

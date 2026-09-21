@@ -1,11 +1,38 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
 
-const stageSchema = new mongoose.Schema(
+const Stage = sequelize.define(
+  'Stage',
   {
-    name: { type: String, required: true, trim: true },
-    order: { type: Number, required: true, default: 0 },
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: { notEmpty: true },
+      set(val) {
+        this.setDataValue('name', val ? val.trim() : val);
+      },
+    },
+    order: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
   },
-  { timestamps: true }
+  {
+    tableName: 'stages',
+    timestamps: true,
+  }
 );
 
-module.exports = mongoose.model('Stage', stageSchema);
+Stage.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  values._id = values.id;
+  return values;
+};
+
+module.exports = Stage;

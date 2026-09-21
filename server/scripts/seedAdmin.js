@@ -1,7 +1,7 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
-const connectDB = require('../config/db');
-const User = require('../models/User');
+const { connectDB } = require('../config/db');
+const { User } = require('../models');
 
 async function seedAdmin() {
   await connectDB();
@@ -15,7 +15,7 @@ async function seedAdmin() {
     process.exit(1);
   }
 
-  const existing = await User.findOne({ username });
+  const existing = await User.findOne({ where: { username } });
   if (existing) {
     console.log(`Admin user "${username}" already exists. Nothing to do.`);
     process.exit(0);

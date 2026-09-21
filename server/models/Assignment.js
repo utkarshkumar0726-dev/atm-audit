@@ -1,13 +1,39 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
 
-const assignmentSchema = new mongoose.Schema(
+const Assignment = sequelize.define(
+  'Assignment',
   {
-    auditor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    atm: { type: mongoose.Schema.Types.ObjectId, ref: 'Atm', required: true },
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    auditorId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    atmId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   },
-  { timestamps: true }
+  {
+    tableName: 'assignments',
+    timestamps: true,
+    indexes: [
+      {
+        unique: true,
+        fields: ['auditorId', 'atmId'],
+      },
+    ],
+  }
 );
 
-assignmentSchema.index({ auditor: 1, atm: 1 }, { unique: true });
+Assignment.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  values._id = values.id;
+  return values;
+};
 
-module.exports = mongoose.model('Assignment', assignmentSchema);
+module.exports = Assignment;
