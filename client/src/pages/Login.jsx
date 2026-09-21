@@ -16,7 +16,7 @@ export default function Login() {
     setSubmitting(true);
     try {
       const user = await login(username, password);
-      navigate(user.role === 'admin' ? '/admin' : '/audit/new');
+      navigate(user.role === 'admin' ? '/admin' : '/auditor');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
     } finally {

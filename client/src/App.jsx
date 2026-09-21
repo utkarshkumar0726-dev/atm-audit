@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import AuditForm from './pages/AuditForm';
+import AuditorDashboard from './pages/AuditorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminAuditDetail from './pages/AdminAuditDetail';
 import AdminAuditors from './pages/AdminAuditors';
@@ -17,6 +18,19 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+
+          <Route
+            path="/auditor"
+            element={
+              <ProtectedRoute role="auditor">
+                <AuditorDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/auditor/audits"
+            element={<Navigate to="/auditor" replace />}
+          />
 
           <Route
             path="/audit/new"

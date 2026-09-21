@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Topbar from '../components/Topbar';
+import AuditorNav from '../components/AuditorNav';
 import CameraCapture from '../components/CameraCapture';
 import PhotoLightbox from '../components/PhotoLightbox';
 
@@ -103,6 +105,8 @@ function clearDraft(userId) {
 
 export default function AuditForm() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
   const questionCameraInputRef = useRef(null);
@@ -136,12 +140,20 @@ export default function AuditForm() {
         setAssignedAtms(atmsRes.data);
 
         const draft = user?.id ? loadDraft(user.id) : null;
+        const preselectedAtmId = searchParams.get('atmId');
+
         if (draft?.selectedAtm) {
           setSelectedAtm(draft.selectedAtm);
           setPhotos(draft.photos || []);
           setStages(draft.stages?.length ? draft.stages : buildInitialStages(checklistRes.data));
           setStageIndex(draft.stageIndex || 0);
           setStarted(!!draft.started);
+        } else if (preselectedAtmId) {
+          const match = atmsRes.data.find(
+            (a) => a.atmId === preselectedAtmId || a._id === preselectedAtmId
+          );
+          if (match) setSelectedAtm(match);
+          setStages(buildInitialStages(checklistRes.data));
         } else {
           setStages(buildInitialStages(checklistRes.data));
         }
@@ -403,10 +415,37 @@ export default function AuditForm() {
   if (success) {
     return (
       <div className="page-center">
-        <div className="card">
-          <h1>Audit Submitted</h1>
-          <p>The audit for ATM ID "{selectedAtm?.atmId}" has been saved.</p>
-          <button onClick={startNewAudit}>Start New Audit</button>
+        <div className="card" style={{ textAlign: 'center', maxWidth: 440, padding: 32 }}>
+          <div style={{ fontSize: '3rem', marginBottom: 12 }}>✅</div>
+          <h1 style={{ margin: '0 0 8px' }}>Audit Submitted!</h1>
+          <p style={{ color: 'var(--color-text-muted)', marginBottom: 24, fontSize: '0.95rem' }}>
+            The inspection report for ATM <strong>{selectedAtm?.atmId}</strong> ({selectedAtm?.area?.name}) has been saved successfully.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              onClick={() => navigate('/auditor')}
+              style={{
+                padding: '10px 18px',
+                fontWeight: 600,
+                borderRadius: 8,
+              }}
+            >
+              📋 View My Submitted Audits
+            </button>
+            <button
+              onClick={startNewAudit}
+              style={{
+                padding: '10px 18px',
+                fontWeight: 600,
+                borderRadius: 8,
+                background: '#f1f5f9',
+                color: '#334155',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              ➕ Audit Another ATM
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -423,6 +462,8 @@ export default function AuditForm() {
             Logout
           </button>
         </Topbar>
+
+        <AuditorNav />
 
         <div className="card wide">
           <h1>Start New Audit</h1>
