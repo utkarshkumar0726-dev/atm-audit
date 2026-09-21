@@ -4,22 +4,16 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-const assignmentIncludes = [
-  { model: User, as: 'auditor', attributes: ['id', 'name', 'username'] },
-  {
-    model: Atm,
-    as: 'atm',
-    include: [{ model: Area, as: 'area', attributes: ['id', 'name'] }],
-  },
-];
-
 // GET /api/assignments - admin views all ATM-to-auditor assignments
 router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const assignments = await Assignment.findAll({
-      include: assignmentIncludes,
-      order: [['createdAt', 'DESC']],
-    });
+    const assignments = await Assignment.find()
+      .populate('auditor', 'id name username')
+      .populate({
+        path: 'atm',
+        populate: { path: 'area', select: 'id name' },
+      })
+      .sort({ createdAt: -1 });
     res.json(assignments);
   } catch (err) {
     console.error('Fetch assignments error:', err);
@@ -36,16 +30,20 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
     }
 
     const existing = await Assignment.findOne({
-      where: { auditorId, atmId },
+      auditor: auditorId,
+      atm: atmId,
     });
     if (existing) {
       return res.status(409).json({ message: 'This ATM is already assigned to that auditor' });
     }
 
-    const assignment = await Assignment.create({ auditorId, atmId });
-    const populated = await Assignment.findByPk(assignment.id, {
-      include: assignmentIncludes,
-    });
+    const assignment = await Assignment.create({ auditor: auditorId, atm: atmId });
+    const populated = await Assignment.findById(assignment._id)
+      .populate('auditor', 'id name username')
+      .populate({
+        path: 'atm',
+        populate: { path: 'area', select: 'id name' },
+      });
     res.status(201).json(populated);
   } catch (err) {
     console.error('Create assignment error:', err);
@@ -56,9 +54,9 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
 // DELETE /api/assignments/:id - admin unassigns an ATM from an auditor
 router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const assignment = await Assignment.findByPk(req.params.id);
+    const assignment = await Assignment.findById(req.params.id);
     if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
-    await assignment.destroy();
+    await Assignment.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted' });
   } catch (err) {
     console.error('Delete assignment error:', err);

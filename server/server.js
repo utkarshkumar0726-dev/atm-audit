@@ -27,15 +27,15 @@ app.use('/api/atms', atmRoutes);
 app.use('/api/checklist', checklistRoutes);
 app.use('/api/assignments', assignmentRoutes);
 
-app.get('/api/health', (req, res) => res.json({ ok: true, database: 'mysql' }));
+app.get('/api/health', (req, res) => res.json({ ok: true, database: 'mongodb' }));
 
 const PORT = process.env.PORT || 5000;
 
 connectDB()
   .then(() => {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT} (MySQL Connected)`));
+    app.listen(PORT, () => console.log(`Server running on port ${PORT} (MongoDB Connected)`));
   })
   .catch((err) => {
-    console.error('Failed to connect to MySQL database:', err);
+    console.error('Failed to connect to MongoDB database:', err);
     process.exit(1);
   });

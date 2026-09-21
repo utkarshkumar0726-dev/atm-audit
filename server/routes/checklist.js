@@ -7,20 +7,18 @@ const router = express.Router();
 // GET /api/checklist - nested stages + questions, in order (any authenticated user)
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const stages = await Stage.findAll({
-      include: [
-        {
-          model: ChecklistQuestion,
-          as: 'questions',
-        },
-      ],
-      order: [
-        ['order', 'ASC'],
-        [{ model: ChecklistQuestion, as: 'questions' }, 'order', 'ASC'],
-      ],
+    const stages = await Stage.find().sort({ order: 1 });
+    const questions = await ChecklistQuestion.find().sort({ order: 1 });
+
+    const result = stages.map((stage) => {
+      const stageObj = stage.toObject();
+      stageObj.questions = questions.filter(
+        (q) => q.stage.toString() === stage._id.toString()
+      );
+      return stageObj;
     });
 
-    res.json(stages);
+    res.json(result);
   } catch (err) {
     console.error('Fetch checklist error:', err);
     res.status(500).json({ message: 'Server error fetching checklist' });
@@ -34,7 +32,7 @@ router.post('/stages', requireAuth, requireRole('admin'), async (req, res) => {
     if (!name || !name.trim()) {
       return res.status(400).json({ message: 'name is required' });
     }
-    const count = await Stage.count();
+    const count = await Stage.countDocuments();
     const stage = await Stage.create({ name: name.trim(), order: count });
     res.status(201).json(stage);
   } catch (err) {
@@ -47,7 +45,7 @@ router.post('/stages', requireAuth, requireRole('admin'), async (req, res) => {
 router.put('/stages/:id', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const { name, order } = req.body;
-    const stage = await Stage.findByPk(req.params.id);
+    const stage = await Stage.findById(req.params.id);
     if (!stage) return res.status(404).json({ message: 'Stage not found' });
 
     if (name !== undefined) {
@@ -66,11 +64,11 @@ router.put('/stages/:id', requireAuth, requireRole('admin'), async (req, res) =>
 // DELETE /api/checklist/stages/:id - admin deletes a stage and its questions
 router.delete('/stages/:id', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const stage = await Stage.findByPk(req.params.id);
+    const stage = await Stage.findById(req.params.id);
     if (!stage) return res.status(404).json({ message: 'Stage not found' });
 
-    await ChecklistQuestion.destroy({ where: { stageId: stage.id } });
-    await stage.destroy();
+    await ChecklistQuestion.deleteMany({ stage: stage._id });
+    await Stage.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted' });
   } catch (err) {
     console.error('Delete stage error:', err);
@@ -85,11 +83,11 @@ router.post('/stages/:stageId/questions', requireAuth, requireRole('admin'), asy
     if (!text || !text.trim()) {
       return res.status(400).json({ message: 'text is required' });
     }
-    const stage = await Stage.findByPk(req.params.stageId);
+    const stage = await Stage.findById(req.params.stageId);
     if (!stage) return res.status(404).json({ message: 'Stage not found' });
 
-    const count = await ChecklistQuestion.count({ where: { stageId: stage.id } });
-    const question = await ChecklistQuestion.create({ stageId: stage.id, text: text.trim(), order: count });
+    const count = await ChecklistQuestion.countDocuments({ stage: stage._id });
+    const question = await ChecklistQuestion.create({ stage: stage._id, text: text.trim(), order: count });
     res.status(201).json(question);
   } catch (err) {
     console.error('Create question error:', err);
@@ -101,7 +99,7 @@ router.post('/stages/:stageId/questions', requireAuth, requireRole('admin'), asy
 router.put('/questions/:id', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const { text, order } = req.body;
-    const question = await ChecklistQuestion.findByPk(req.params.id);
+    const question = await ChecklistQuestion.findById(req.params.id);
     if (!question) return res.status(404).json({ message: 'Question not found' });
 
     if (text !== undefined) {
@@ -120,10 +118,10 @@ router.put('/questions/:id', requireAuth, requireRole('admin'), async (req, res)
 // DELETE /api/checklist/questions/:id - admin deletes a question
 router.delete('/questions/:id', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const question = await ChecklistQuestion.findByPk(req.params.id);
+    const question = await ChecklistQuestion.findById(req.params.id);
     if (!question) return res.status(404).json({ message: 'Question not found' });
 
-    await question.destroy();
+    await ChecklistQuestion.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted' });
   } catch (err) {
     console.error('Delete question error:', err);

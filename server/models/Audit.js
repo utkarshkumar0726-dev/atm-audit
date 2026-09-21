@@ -1,49 +1,24 @@
-const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/db');
+const mongoose = require('mongoose');
 
-const Audit = sequelize.define(
-  'Audit',
+const auditSchema = new mongoose.Schema(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    atmId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: { notEmpty: true },
-    },
-    area: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: { notEmpty: true },
-    },
-    auditorId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    photos: {
-      type: DataTypes.JSON,
-      allowNull: false,
-      defaultValue: [],
-    },
-    stages: {
-      type: DataTypes.JSON,
-      allowNull: false,
-      defaultValue: [],
-    },
+    atmId: { type: String, required: true },
+    area: { type: String, required: true },
+    auditor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    photos: [{ type: String }],
+    stages: [
+      {
+        stageName: String,
+        responses: [
+          {
+            questionText: String,
+            answer: { type: String, enum: ['yes', 'no', 'na'] },
+          },
+        ],
+      },
+    ],
   },
-  {
-    tableName: 'audits',
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-Audit.prototype.toJSON = function () {
-  const values = { ...this.get() };
-  values._id = values.id;
-  return values;
-};
-
-module.exports = Audit;
+module.exports = mongoose.model('Audit', auditSchema);

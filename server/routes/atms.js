@@ -1,5 +1,4 @@
 const express = require('express');
-const { Op } = require('sequelize');
 const XLSX = require('xlsx');
 const { Atm, Area, Assignment } = require('../models');
 const { requireAuth, requireRole } = require('../middleware/auth');
@@ -48,6 +47,9 @@ function parseSheetRows(rows, sheetName) {
     const atmId = getCol(r, ['ATMID', 'ATM', 'TERMINALID', 'TERMINAL', 'ATMNO']);
     if (!atmId) continue;
 
+    const slNoVal = getCol(r, ['SLNO', 'SNO', 'SRNO']);
+    const slNo = Number(slNoVal) || 0;
+
     const bic = getCol(r, ['BIC', 'BANKIDENTIFIER', 'BRANCHCODE']);
     const branchName = getCol(r, ['BRANCHNAME', 'BRANCH', 'SITENAME']);
     const inchargeName = getCol(r, ['PRESENTINCHARGE', 'INCHARGE', 'CONTACTPERSON']);
@@ -55,11 +57,22 @@ function parseSheetRows(rows, sheetName) {
     const inchargeContact = getCol(r, ['INCHARGECONTACT', 'CONTACT', 'MOBILE', 'PHONE']);
     const zone = getCol(r, ['ZONE', 'AREA', 'REGION', 'CITY']) || 'General';
     const address = getCol(r, ['ADDRESS', 'LOCATION', 'SITEADDRESS']);
-    const state = getCol(r, ['STATE']);
-    const siteType = getCol(r, ['ONSITEOFFSITECRM', 'SITETYPE', 'TYPE']);
+    let pincode = getCol(r, ['PINCODE', 'PIN', 'ZIP']);
+    let state = getCol(r, ['STATE']);
+    let siteType = getCol(r, ['ONSITEOFFSITECRM', 'SITETYPE', 'TYPE']);
+
+    // Check if any cell has a 6-digit pincode in shifted columns
+    for (const cell of r) {
+      if (cell && /^\d{6}$/.test(String(cell).trim())) {
+        pincode = String(cell).trim();
+        break;
+      }
+    }
+
     const location = branchName || address || zone;
 
     parsed.push({
+      slNo,
       atmId,
       vendor: sheetName || 'General',
       bic,
@@ -69,6 +82,7 @@ function parseSheetRows(rows, sheetName) {
       inchargeContact,
       zone,
       address,
+      pincode,
       state,
       siteType,
       location,
@@ -81,13 +95,9 @@ function parseSheetRows(rows, sheetName) {
 // GET /api/atms - admin views the full ATM master list
 router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const atms = await Atm.findAll({
-      include: [{ model: Area, as: 'area', attributes: ['id', 'name'] }],
-      order: [
-        ['slNo', 'ASC'],
-        ['atmId', 'ASC'],
-      ],
-    });
+    const atms = await Atm.find()
+      .populate('area', 'id name')
+      .sort({ slNo: 1, atmId: 1 });
     res.json(atms);
   } catch (err) {
     console.error('Fetch ATMs error:', err);
@@ -98,16 +108,11 @@ router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
 // GET /api/atms/mine - auditor views only the ATMs assigned to them
 router.get('/mine', requireAuth, requireRole('auditor'), async (req, res) => {
   try {
-    const assignments = await Assignment.findAll({
-      where: { auditorId: req.user.id },
-      include: [
-        {
-          model: Atm,
-          as: 'atm',
-          include: [{ model: Area, as: 'area', attributes: ['id', 'name'] }],
-        },
-      ],
-    });
+    const assignments = await Assignment.find({ auditor: req.user.id })
+      .populate({
+        path: 'atm',
+        populate: { path: 'area', select: 'id name' },
+      });
     const atms = assignments.map((a) => a.atm).filter(Boolean);
     res.json(atms);
   } catch (err) {
@@ -120,6 +125,7 @@ router.get('/mine', requireAuth, requireRole('auditor'), async (req, res) => {
 router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const {
+      slNo,
       atmId,
       area,
       location,
@@ -130,6 +136,7 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
       inchargeDesig,
       inchargeContact,
       address,
+      pincode,
       state,
       siteType,
     } = req.body;
@@ -141,7 +148,7 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
       return res.status(400).json({ message: 'area is required' });
     }
 
-    const existing = await Atm.findOne({ where: { atmId: atmId.trim() } });
+    const existing = await Atm.findOne({ atmId: atmId.trim() });
     if (existing) {
       return res.status(409).json({ message: 'ATM ID already exists' });
     }
@@ -149,7 +156,7 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
     const atm = await Atm.create({
       slNo: Number(slNo) || 0,
       atmId: atmId.trim(),
-      areaId: area,
+      area,
       location: location?.trim() || branchName?.trim() || '',
       vendor: vendor?.trim() || '',
       bic: bic?.trim() || '',
@@ -163,9 +170,7 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
       siteType: siteType?.trim() || '',
     });
 
-    const populated = await Atm.findByPk(atm.id, {
-      include: [{ model: Area, as: 'area', attributes: ['id', 'name'] }],
-    });
+    const populated = await Atm.findById(atm._id).populate('area', 'id name');
     res.status(201).json(populated);
   } catch (err) {
     console.error('Create ATM error:', err);
@@ -198,10 +203,10 @@ router.post('/import-excel', requireAuth, requireRole('admin'), async (req, res)
     }
 
     // Cache existing areas
-    const existingAreas = await Area.findAll();
+    const existingAreas = await Area.find();
     const areaMap = new Map();
     for (const a of existingAreas) {
-      areaMap.set(a.name.toLowerCase().trim(), a.id);
+      areaMap.set(a.name.toLowerCase().trim(), a._id);
     }
 
     let created = 0;
@@ -214,14 +219,15 @@ router.post('/import-excel', requireAuth, requireRole('admin'), async (req, res)
 
       if (!areaId) {
         const newArea = await Area.create({ name: cleanZone });
-        areaId = newArea.id;
+        areaId = newArea._id;
         areaMap.set(cleanZone.toLowerCase(), areaId);
         areasCreated.add(cleanZone);
       }
 
-      const existingAtm = await Atm.findOne({ where: { atmId: item.atmId } });
+      const existingAtm = await Atm.findOne({ atmId: item.atmId });
       if (existingAtm) {
-        existingAtm.areaId = areaId;
+        existingAtm.area = areaId;
+        if (item.slNo) existingAtm.slNo = item.slNo;
         existingAtm.vendor = item.vendor;
         existingAtm.bic = item.bic;
         existingAtm.branchName = item.branchName;
@@ -229,6 +235,7 @@ router.post('/import-excel', requireAuth, requireRole('admin'), async (req, res)
         existingAtm.inchargeDesig = item.inchargeDesig;
         existingAtm.inchargeContact = item.inchargeContact;
         existingAtm.address = item.address;
+        if (item.pincode) existingAtm.pincode = item.pincode;
         existingAtm.state = item.state;
         existingAtm.siteType = item.siteType;
         existingAtm.location = item.location;
@@ -236,8 +243,9 @@ router.post('/import-excel', requireAuth, requireRole('admin'), async (req, res)
         updated++;
       } else {
         await Atm.create({
+          slNo: item.slNo,
           atmId: item.atmId,
-          areaId,
+          area: areaId,
           vendor: item.vendor,
           bic: item.bic,
           branchName: item.branchName,
@@ -245,6 +253,7 @@ router.post('/import-excel', requireAuth, requireRole('admin'), async (req, res)
           inchargeDesig: item.inchargeDesig,
           inchargeContact: item.inchargeContact,
           address: item.address,
+          pincode: item.pincode,
           state: item.state,
           siteType: item.siteType,
           location: item.location,
@@ -270,6 +279,7 @@ router.post('/import-excel', requireAuth, requireRole('admin'), async (req, res)
 router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const {
+      slNo,
       atmId,
       area,
       location,
@@ -280,6 +290,7 @@ router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
       inchargeDesig,
       inchargeContact,
       address,
+      pincode,
       state,
       siteType,
     } = req.body;
@@ -291,21 +302,19 @@ router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
       return res.status(400).json({ message: 'area is required' });
     }
 
-    const atm = await Atm.findByPk(req.params.id);
+    const atm = await Atm.findById(req.params.id);
     if (!atm) return res.status(404).json({ message: 'ATM not found' });
 
     const existing = await Atm.findOne({
-      where: {
-        atmId: atmId.trim(),
-        id: { [Op.ne]: atm.id },
-      },
+      atmId: atmId.trim(),
+      _id: { $ne: atm._id },
     });
     if (existing) {
       return res.status(409).json({ message: 'ATM ID already exists' });
     }
 
     atm.atmId = atmId.trim();
-    atm.areaId = area;
+    atm.area = area;
     if (slNo !== undefined) atm.slNo = Number(slNo) || 0;
     if (location !== undefined) atm.location = location?.trim() || '';
     if (vendor !== undefined) atm.vendor = vendor?.trim() || '';
@@ -320,9 +329,7 @@ router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
     if (siteType !== undefined) atm.siteType = siteType?.trim() || '';
     await atm.save();
 
-    const populated = await Atm.findByPk(atm.id, {
-      include: [{ model: Area, as: 'area', attributes: ['id', 'name'] }],
-    });
+    const populated = await Atm.findById(atm._id).populate('area', 'id name');
     res.json(populated);
   } catch (err) {
     console.error('Update ATM error:', err);
@@ -333,11 +340,11 @@ router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
 // DELETE /api/atms/:id - admin removes an ATM
 router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const atm = await Atm.findByPk(req.params.id);
+    const atm = await Atm.findById(req.params.id);
     if (!atm) return res.status(404).json({ message: 'ATM not found' });
 
-    await Assignment.destroy({ where: { atmId: atm.id } });
-    await atm.destroy();
+    await Assignment.deleteMany({ atm: atm._id });
+    await Atm.findByIdAndDelete(req.params.id);
     res.json({ message: 'Deleted' });
   } catch (err) {
     console.error('Delete ATM error:', err);

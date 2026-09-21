@@ -1,8 +1,7 @@
 require('dotenv').config();
-const { connectDB, sequelize } = require('../config/db');
-const { Area, Atm, Stage, ChecklistQuestion } = require('../models');
-
-const AREA_NAMES = ['North Zone', 'South Zone', 'East Zone', 'West Zone', 'Central Zone'];
+const mongoose = require('mongoose');
+const { connectDB } = require('../config/db');
+const { Stage, ChecklistQuestion } = require('../models');
 
 const CHECKLIST = [
   {
@@ -37,47 +36,25 @@ const CHECKLIST = [
 async function seed() {
   await connectDB();
 
-  const areaCount = await Area.count();
-  if (areaCount === 0) {
-    await Area.bulkCreate(AREA_NAMES.map((name) => ({ name })));
-    console.log(`Seeded ${AREA_NAMES.length} areas`);
-  } else {
-    console.log('Areas already exist, skipping');
-  }
-
-  const atmCount = await Atm.count();
-  if (atmCount === 0) {
-    const areas = await Area.findAll();
-    const atms = Array.from({ length: 100 }, (_, i) => {
-      const area = areas[i % areas.length];
-      const branchNumber = Math.floor(i / areas.length) + 1;
-      return {
-        atmId: `ATM-${1001 + i}`,
-        areaId: area.id,
-        location: `${area.name} - Branch ${branchNumber}`,
-      };
-    });
-    await Atm.bulkCreate(atms);
-    console.log(`Seeded ${atms.length} ATMs`);
-  } else {
-    console.log('ATMs already exist, skipping');
-  }
-
-  const stageCount = await Stage.count();
+  const stageCount = await Stage.countDocuments();
   if (stageCount === 0) {
     for (let i = 0; i < CHECKLIST.length; i++) {
       const { stageName, questions } = CHECKLIST[i];
       const stage = await Stage.create({ name: stageName, order: i });
-      await ChecklistQuestion.bulkCreate(
-        questions.map((text, qi) => ({ stageId: stage.id, text, order: qi }))
-      );
+      for (let qi = 0; qi < questions.length; qi++) {
+        await ChecklistQuestion.create({
+          stage: stage._id,
+          text: questions[qi],
+          order: qi,
+        });
+      }
     }
-    console.log(`Seeded ${CHECKLIST.length} stages with questions`);
+    console.log(`Seeded ${CHECKLIST.length} stages with questions in MongoDB`);
   } else {
-    console.log('Checklist stages already exist, skipping');
+    console.log('Checklist stages already exist in MongoDB, skipping');
   }
 
-  await sequelize.close();
+  await mongoose.connection.close();
   process.exit(0);
 }
 

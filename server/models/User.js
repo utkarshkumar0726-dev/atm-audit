@@ -1,47 +1,13 @@
-const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/db');
+const mongoose = require('mongoose');
 
-const User = sequelize.define(
-  'User',
+const userSchema = new mongoose.Schema(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: { notEmpty: true },
-    },
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-      validate: { notEmpty: true },
-      set(val) {
-        this.setDataValue('username', val ? val.toLowerCase().trim() : val);
-      },
-    },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    role: {
-      type: DataTypes.ENUM('auditor', 'admin'),
-      defaultValue: 'auditor',
-    },
+    name: { type: String, required: true, trim: true },
+    username: { type: String, required: true, unique: true, trim: true, lowercase: true },
+    password: { type: String, required: true },
+    role: { type: String, enum: ['auditor', 'admin'], default: 'auditor' },
   },
-  {
-    tableName: 'users',
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-User.prototype.toJSON = function () {
-  const values = { ...this.get() };
-  values._id = values.id;
-  return values;
-};
-
-module.exports = User;
+module.exports = mongoose.model('User', userSchema);

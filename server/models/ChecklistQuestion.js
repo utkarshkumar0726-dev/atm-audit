@@ -1,43 +1,12 @@
-const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/db');
+const mongoose = require('mongoose');
 
-const ChecklistQuestion = sequelize.define(
-  'ChecklistQuestion',
+const checklistQuestionSchema = new mongoose.Schema(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    stageId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    text: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      validate: { notEmpty: true },
-      set(val) {
-        this.setDataValue('text', val ? val.trim() : val);
-      },
-    },
-    order: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
-    },
+    stage: { type: mongoose.Schema.Types.ObjectId, ref: 'Stage', required: true },
+    text: { type: String, required: true, trim: true },
+    order: { type: Number, default: 0 },
   },
-  {
-    tableName: 'checklist_questions',
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-ChecklistQuestion.prototype.toJSON = function () {
-  const values = { ...this.get() };
-  values._id = values.id;
-  values.stage = values.stageId;
-  return values;
-};
-
-module.exports = ChecklistQuestion;
+module.exports = mongoose.model('ChecklistQuestion', checklistQuestionSchema);

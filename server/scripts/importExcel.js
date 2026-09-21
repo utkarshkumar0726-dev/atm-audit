@@ -2,7 +2,8 @@ require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
 const XLSX = require('xlsx');
-const { connectDB, sequelize } = require('../config/db');
+const mongoose = require('mongoose');
+const { connectDB } = require('../config/db');
 const { Atm, Area } = require('../models');
 
 function findHeaderIndex(rows) {
@@ -42,13 +43,16 @@ function parseSheetData(rows, sheetName) {
     return '';
   };
 
-  const parsed = [];
+  const results = [];
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const r = rows[i];
     if (!r || !Array.isArray(r)) continue;
 
     const atmId = getCol(r, ['ATMID', 'ATM', 'TERMINALID', 'TERMINAL', 'ATMNO']);
     if (!atmId) continue;
+
+    const slNoVal = getCol(r, ['SLNO', 'SNO', 'SRNO']);
+    const slNo = Number(slNoVal) || 0;
 
     const bic = getCol(r, ['BIC', 'BANKIDENTIFIER', 'BRANCHCODE']);
     const branchName = getCol(r, ['BRANCHNAME', 'BRANCH', 'SITENAME']);
@@ -57,13 +61,23 @@ function parseSheetData(rows, sheetName) {
     const inchargeContact = getCol(r, ['INCHARGECONTACT', 'CONTACT', 'MOBILE', 'PHONE']);
     const zone = getCol(r, ['ZONE', 'AREA', 'REGION', 'CITY']) || 'General';
     const address = getCol(r, ['ADDRESS', 'LOCATION', 'SITEADDRESS']);
-    const state = getCol(r, ['STATE']);
-    const siteType = getCol(r, ['ONSITEOFFSITECRM', 'SITETYPE', 'TYPE']);
+    let pincode = getCol(r, ['PINCODE', 'PIN', 'ZIP']);
+    let state = getCol(r, ['STATE']);
+    let siteType = getCol(r, ['ONSITEOFFSITECRM', 'SITETYPE', 'TYPE']);
+
+    for (const cell of r) {
+      if (cell && /^\d{6}$/.test(String(cell).trim())) {
+        pincode = String(cell).trim();
+        break;
+      }
+    }
+
     const location = branchName || address || zone;
 
-    parsed.push({
+    results.push({
+      slNo,
       atmId,
-      vendor: sheetName,
+      vendor: sheetName || 'General',
       bic,
       branchName,
       inchargeName,
@@ -71,60 +85,43 @@ function parseSheetData(rows, sheetName) {
       inchargeContact,
       zone,
       address,
+      pincode,
       state,
       siteType,
       location,
     });
   }
 
-  return parsed;
+  return results;
 }
 
 async function run() {
-  let filePathArg = process.argv[2];
-  if (!filePathArg) {
-    const defaultFile = path.resolve(__dirname, '..', '..', 'PROVIGIL AND CMS SITES FOR AUDITING.xlsx');
-    if (fs.existsSync(defaultFile)) {
-      filePathArg = defaultFile;
-    } else {
-      console.error('Usage: node scripts/importExcel.js <path-to-excel-file>');
-      process.exit(1);
-    }
-  }
+  const filePath = path.resolve(__dirname, '..', '..', 'PROVIGIL AND CMS SITES FOR AUDITING.xlsx');
 
-  const resolvedPath = path.resolve(filePathArg);
-  if (!fs.existsSync(resolvedPath)) {
-    console.error(`File not found: ${resolvedPath}`);
+  if (!fs.existsSync(filePath)) {
+    console.error(`Excel file not found at path: ${filePath}`);
     process.exit(1);
   }
 
-  console.log(`Connecting to MySQL database...`);
   await connectDB();
-
-  console.log(`Reading Excel file: ${resolvedPath}...`);
-  const workbook = XLSX.readFile(resolvedPath);
-  console.log(`Found sheets: ${workbook.SheetNames.join(', ')}`);
+  console.log(`Reading Excel file from: ${filePath}`);
+  const workbook = XLSX.readFile(filePath);
 
   let allAtms = [];
   for (const sheetName of workbook.SheetNames) {
     const ws = workbook.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-    const sheetAtms = parseSheetData(rows, sheetName);
-    console.log(`- Sheet "${sheetName}": parsed ${sheetAtms.length} ATMs`);
-    allAtms = allAtms.concat(sheetAtms);
+    const atms = parseSheetData(rows, sheetName);
+    console.log(`Parsed ${atms.length} valid ATMs from sheet "${sheetName}"`);
+    allAtms = allAtms.concat(atms);
   }
 
-  console.log(`\nTotal ATMs parsed across all sheets: ${allAtms.length}`);
-  if (allAtms.length === 0) {
-    console.log('No ATMs found to import.');
-    process.exit(0);
-  }
+  console.log(`Total valid ATM rows across all sheets: ${allAtms.length}`);
 
-  // Cache existing areas
-  const existingAreas = await Area.findAll();
+  const existingAreas = await Area.find();
   const areaMap = new Map();
   for (const a of existingAreas) {
-    areaMap.set(a.name.toLowerCase().trim(), a.id);
+    areaMap.set(a.name.toLowerCase().trim(), a._id);
   }
 
   let created = 0;
@@ -132,21 +129,38 @@ async function run() {
   const newAreas = new Set();
 
   for (const item of allAtms) {
-    const cleanZone = item.zone.trim();
+    const cleanZone = (item.zone || 'General').trim();
     let areaId = areaMap.get(cleanZone.toLowerCase());
 
     if (!areaId) {
       const newArea = await Area.create({ name: cleanZone });
-      areaId = newArea.id;
+      areaId = newArea._id;
       areaMap.set(cleanZone.toLowerCase(), areaId);
       newAreas.add(cleanZone);
     }
 
-    const [atmRecord, isCreated] = await Atm.findOrCreate({
-      where: { atmId: item.atmId },
-      defaults: {
+    const existingAtm = await Atm.findOne({ atmId: item.atmId });
+    if (existingAtm) {
+      existingAtm.area = areaId;
+      if (item.slNo) existingAtm.slNo = item.slNo;
+      existingAtm.vendor = item.vendor;
+      existingAtm.bic = item.bic;
+      existingAtm.branchName = item.branchName;
+      existingAtm.inchargeName = item.inchargeName;
+      existingAtm.inchargeDesig = item.inchargeDesig;
+      existingAtm.inchargeContact = item.inchargeContact;
+      existingAtm.address = item.address;
+      if (item.pincode) existingAtm.pincode = item.pincode;
+      existingAtm.state = item.state;
+      existingAtm.siteType = item.siteType;
+      existingAtm.location = item.location;
+      await existingAtm.save();
+      updated++;
+    } else {
+      await Atm.create({
+        slNo: item.slNo,
         atmId: item.atmId,
-        areaId,
+        area: areaId,
         vendor: item.vendor,
         bic: item.bic,
         branchName: item.branchName,
@@ -154,33 +168,17 @@ async function run() {
         inchargeDesig: item.inchargeDesig,
         inchargeContact: item.inchargeContact,
         address: item.address,
+        pincode: item.pincode,
         state: item.state,
         siteType: item.siteType,
         location: item.location,
-      },
-    });
-
-    if (isCreated) {
+      });
       created++;
-    } else {
-      atmRecord.areaId = areaId;
-      atmRecord.vendor = item.vendor;
-      atmRecord.bic = item.bic;
-      atmRecord.branchName = item.branchName;
-      atmRecord.inchargeName = item.inchargeName;
-      atmRecord.inchargeDesig = item.inchargeDesig;
-      atmRecord.inchargeContact = item.inchargeContact;
-      atmRecord.address = item.address;
-      atmRecord.state = item.state;
-      atmRecord.siteType = item.siteType;
-      atmRecord.location = item.location;
-      await atmRecord.save();
-      updated++;
     }
   }
 
   console.log('\n======================================');
-  console.log('   EXCEL IMPORT COMPLETED IN MYSQL    ');
+  console.log('  EXCEL IMPORT COMPLETED IN MONGODB   ');
   console.log('======================================');
   console.log(`Total ATMs Processed : ${allAtms.length}`);
   console.log(`New ATMs Created     : ${created}`);
@@ -190,7 +188,7 @@ async function run() {
   }
   console.log('======================================\n');
 
-  await sequelize.close();
+  await mongoose.connection.close();
   process.exit(0);
 }
 

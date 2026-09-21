@@ -1,7 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { Op } = require('sequelize');
 const { User } = require('../models');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
@@ -9,7 +8,7 @@ const router = express.Router();
 
 function signToken(user) {
   return jwt.sign(
-    { id: user.id, username: user.username, role: user.role, name: user.name },
+    { id: user._id.toString(), username: user.username, role: user.role, name: user.name },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '12h' }
   );
@@ -23,9 +22,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Username and password are required' });
     }
 
-    const user = await User.findOne({
-      where: { username: username.toLowerCase().trim() },
-    });
+    const user = await User.findOne({ username: username.toLowerCase().trim() });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -38,7 +35,7 @@ router.post('/login', async (req, res) => {
     const token = signToken(user);
     res.json({
       token,
-      user: { id: user.id, _id: user.id, name: user.name, username: user.username, role: user.role },
+      user: { id: user._id, _id: user._id, name: user.name, username: user.username, role: user.role },
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -49,9 +46,7 @@ router.post('/login', async (req, res) => {
 // GET /api/auth/me - current logged-in user
 router.get('/me', requireAuth, async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id, {
-      attributes: { exclude: ['password'] },
-    });
+    const user = await User.findById(req.user.id).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (err) {
@@ -68,9 +63,7 @@ router.post('/auditors', requireAuth, requireRole('admin'), async (req, res) => 
       return res.status(400).json({ message: 'name, username, and password are required' });
     }
 
-    const existing = await User.findOne({
-      where: { username: username.toLowerCase().trim() },
-    });
+    const existing = await User.findOne({ username: username.toLowerCase().trim() });
     if (existing) {
       return res.status(409).json({ message: 'Username already taken' });
     }
@@ -83,7 +76,7 @@ router.post('/auditors', requireAuth, requireRole('admin'), async (req, res) => 
       role: 'auditor',
     });
 
-    res.status(201).json({ id: user.id, _id: user.id, name: user.name, username: user.username, role: user.role });
+    res.status(201).json({ id: user._id, _id: user._id, name: user.name, username: user.username, role: user.role });
   } catch (err) {
     console.error('Create auditor error:', err);
     res.status(500).json({ message: 'Server error creating auditor' });
@@ -93,11 +86,9 @@ router.post('/auditors', requireAuth, requireRole('admin'), async (req, res) => 
 // GET /api/auth/auditors - admin lists all auditors
 router.get('/auditors', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const auditors = await User.findAll({
-      where: { role: 'auditor' },
-      attributes: { exclude: ['password'] },
-      order: [['createdAt', 'DESC']],
-    });
+    const auditors = await User.find({ role: 'auditor' })
+      .select('-password')
+      .sort({ createdAt: -1 });
     res.json(auditors);
   } catch (err) {
     console.error('List auditors error:', err);
@@ -113,9 +104,7 @@ router.put('/auditors/:id', requireAuth, requireRole('admin'), async (req, res) 
       return res.status(400).json({ message: 'name and username are required' });
     }
 
-    const auditor = await User.findOne({
-      where: { id: req.params.id, role: 'auditor' },
-    });
+    const auditor = await User.findOne({ _id: req.params.id, role: 'auditor' });
     if (!auditor) {
       return res.status(404).json({ message: 'Auditor not found' });
     }
@@ -123,10 +112,8 @@ router.put('/auditors/:id', requireAuth, requireRole('admin'), async (req, res) 
     const normalizedUsername = username.toLowerCase().trim();
     if (normalizedUsername !== auditor.username) {
       const existing = await User.findOne({
-        where: {
-          username: normalizedUsername,
-          id: { [Op.ne]: auditor.id },
-        },
+        username: normalizedUsername,
+        _id: { $ne: auditor._id },
       });
       if (existing) {
         return res.status(409).json({ message: 'Username already taken' });
@@ -140,7 +127,7 @@ router.put('/auditors/:id', requireAuth, requireRole('admin'), async (req, res) 
     }
     await auditor.save();
 
-    res.json({ id: auditor.id, _id: auditor.id, name: auditor.name, username: auditor.username, role: auditor.role });
+    res.json({ id: auditor._id, _id: auditor._id, name: auditor.name, username: auditor.username, role: auditor.role });
   } catch (err) {
     console.error('Update auditor error:', err);
     res.status(500).json({ message: 'Server error updating auditor' });

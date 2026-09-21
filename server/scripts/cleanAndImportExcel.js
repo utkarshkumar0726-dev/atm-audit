@@ -2,7 +2,8 @@ require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
 const XLSX = require('xlsx');
-const { connectDB, sequelize } = require('../config/db');
+const mongoose = require('mongoose');
+const { connectDB } = require('../config/db');
 const { Atm, Area, Assignment, Audit } = require('../models');
 
 function normalizeZone(zone) {
@@ -78,15 +79,14 @@ async function cleanAndImport() {
     process.exit(1);
   }
 
-  console.log('Connecting to MySQL database...');
+  console.log('Connecting to MongoDB database...');
   await connectDB();
 
-  console.log('\n--- Wiping old dummy data ---');
-  // Clear assignments and audits first due to foreign keys
-  await Assignment.destroy({ where: {}, truncate: false });
-  await Audit.destroy({ where: {}, truncate: false });
-  await Atm.destroy({ where: {}, truncate: false });
-  await Area.destroy({ where: {}, truncate: false });
+  console.log('\n--- Wiping old dummy data from MongoDB ---');
+  await Assignment.deleteMany({});
+  await Audit.deleteMany({});
+  await Atm.deleteMany({});
+  await Area.deleteMany({});
   console.log('Cleared old ATMs, Areas, and Assignments.');
 
   console.log(`\nReading Excel file: ${filePath}...`);
@@ -119,7 +119,7 @@ async function cleanAndImport() {
 
   for (const zoneName of zoneSet) {
     const area = await Area.create({ name: zoneName });
-    areaMap.set(zoneName, area.id);
+    areaMap.set(zoneName, area._id);
   }
   console.log(`Created ${zoneSet.size} Zones in database:`, Array.from(zoneSet).join(', '));
 
@@ -130,7 +130,7 @@ async function cleanAndImport() {
     await Atm.create({
       slNo: item.slNo,
       atmId: item.atmId,
-      areaId,
+      area: areaId,
       vendor: item.vendor,
       bic: item.bic,
       branchName: item.branchName,
@@ -147,14 +147,14 @@ async function cleanAndImport() {
   }
 
   console.log(`\n======================================================`);
-  console.log(`   SUCCESS: ${inserted} REAL ATMS IMPORTED TO MYSQL   `);
+  console.log(`  SUCCESS: ${inserted} REAL ATMS IMPORTED TO MONGODB  `);
   console.log(`======================================================`);
   console.log(`Provigil ATMs: ${allAtms.filter((a) => a.vendor === 'Provigil').length}`);
   console.log(`CMS ATMs     : ${allAtms.filter((a) => a.vendor === 'CMS').length}`);
   console.log(`Unique Zones : ${zoneSet.size}`);
   console.log(`======================================================\n`);
 
-  await sequelize.close();
+  await mongoose.connection.close();
   process.exit(0);
 }
 

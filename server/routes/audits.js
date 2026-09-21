@@ -56,7 +56,7 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
     const audit = await Audit.create({
       atmId: atmId.trim(),
       area: area.trim(),
-      auditorId: req.user.id,
+      auditor: req.user.id,
       photos,
       stages,
     });
@@ -71,10 +71,7 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
 // GET /api/audits/mine - auditor views their own submitted audits
 router.get('/mine', requireAuth, requireRole('auditor'), async (req, res) => {
   try {
-    const audits = await Audit.findAll({
-      where: { auditorId: req.user.id },
-      order: [['createdAt', 'DESC']],
-    });
+    const audits = await Audit.find({ auditor: req.user.id }).sort({ createdAt: -1 });
     res.json(audits);
   } catch (err) {
     console.error('Fetch my audits error:', err);
@@ -85,11 +82,10 @@ router.get('/mine', requireAuth, requireRole('auditor'), async (req, res) => {
 // GET /api/audits - admin views all audits, with auditor name + atmId populated
 router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const audits = await Audit.findAll({
-      attributes: { exclude: ['photos', 'stages'] },
-      include: [{ model: User, as: 'auditor', attributes: ['id', 'name', 'username'] }],
-      order: [['createdAt', 'DESC']],
-    });
+    const audits = await Audit.find()
+      .select('-photos -stages')
+      .populate('auditor', 'id name username')
+      .sort({ createdAt: -1 });
     res.json(audits);
   } catch (err) {
     console.error('Fetch all audits error:', err);
@@ -100,12 +96,11 @@ router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
 // GET /api/audits/:id - admin (or the owning auditor) views one full form
 router.get('/:id', requireAuth, async (req, res) => {
   try {
-    const audit = await Audit.findByPk(req.params.id, {
-      include: [{ model: User, as: 'auditor', attributes: ['id', 'name', 'username'] }],
-    });
+    const audit = await Audit.findById(req.params.id).populate('auditor', 'id name username');
     if (!audit) return res.status(404).json({ message: 'Audit not found' });
 
-    const isOwner = Number(audit.auditorId) === Number(req.user.id);
+    const auditorIdStr = audit.auditor?._id?.toString() || audit.auditor?.toString();
+    const isOwner = auditorIdStr === req.user.id?.toString();
     if (req.user.role !== 'admin' && !isOwner) {
       return res.status(403).json({ message: 'Forbidden' });
     }
