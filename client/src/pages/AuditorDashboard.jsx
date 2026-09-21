@@ -42,14 +42,24 @@ export default function AuditorDashboard() {
   // Fetch single audit detail for modal
   function openAuditDetail(auditId) {
     setSelectedAuditId(auditId);
-    setLoadingDetail(true);
     setDetailError('');
+
+    // Pre-populate immediately from local state if available
+    const local = audits.find((a) => String(a._id) === String(auditId));
+    if (local) {
+      setDetailAudit(local);
+    }
+
+    setLoadingDetail(true);
     api.get(`/audits/${auditId}`)
       .then((res) => {
         setDetailAudit(res.data);
       })
       .catch((err) => {
-        setDetailError(err.response?.data?.message || 'Failed to load audit details');
+        console.error('Audit detail fetch error:', err);
+        if (!local) {
+          setDetailError(err.response?.data?.message || 'Failed to load audit details');
+        }
       })
       .finally(() => {
         setLoadingDetail(false);
@@ -518,97 +528,110 @@ export default function AuditorDashboard() {
                 {/* Stages & Checklist Responses */}
                 <h3 style={{ fontSize: '1.05rem', margin: '0 0 12px' }}>Checklist Inspection Results</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {detailAudit.stages?.map((stage, sIdx) => (
-                    <div
-                      key={sIdx}
-                      style={{
-                        borderRadius: 10,
-                        border: '1px solid var(--color-border)',
-                        overflow: 'hidden',
-                      }}
-                    >
+                  {detailAudit.stages?.map((stage, sIdx) => {
+                    const questions = stage.questions || stage.responses || [];
+                    return (
                       <div
+                        key={sIdx}
                         style={{
-                          padding: '10px 14px',
-                          background: '#f8fafc',
-                          fontWeight: 700,
-                          fontSize: '0.9rem',
-                          color: '#1e293b',
-                          borderBottom: '1px solid var(--color-border)',
+                          borderRadius: 10,
+                          border: '1px solid var(--color-border)',
+                          overflow: 'hidden',
                         }}
                       >
-                        {stage.stageName}
+                        <div
+                          style={{
+                            padding: '10px 14px',
+                            background: '#f8fafc',
+                            fontWeight: 700,
+                            fontSize: '0.9rem',
+                            color: '#1e293b',
+                            borderBottom: '1px solid var(--color-border)',
+                          }}
+                        >
+                          {stage.stageName} {questions.length > 0 ? `(${questions.length} items)` : ''}
+                        </div>
+                        <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          {questions.length === 0 ? (
+                            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: 0 }}>
+                              No responses recorded for this section.
+                            </p>
+                          ) : (
+                            questions.map((q, qIdx) => {
+                              const qText = q.questionText || q.text || `Question ${qIdx + 1}`;
+                              const ans = (q.answer || 'na').toLowerCase();
+                              return (
+                                <div
+                                  key={qIdx}
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 6,
+                                    paddingBottom: 10,
+                                    borderBottom:
+                                      qIdx < questions.length - 1 ? '1px dashed #f1f5f9' : 'none',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                                    <span style={{ fontSize: '0.9rem', color: '#334155' }}>
+                                      {qText}
+                                    </span>
+                                    <span
+                                      style={{
+                                        padding: '2px 8px',
+                                        borderRadius: 4,
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        textTransform: 'uppercase',
+                                        background: ans === 'yes' ? '#dcfce7' : ans === 'no' ? '#fee2e2' : '#f1f5f9',
+                                        color: ans === 'yes' ? '#15803d' : ans === 'no' ? '#b91c1c' : '#64748b',
+                                        alignSelf: 'flex-start',
+                                      }}
+                                    >
+                                      {ans}
+                                    </span>
+                                  </div>
+                                  {ans === 'no' && q.reason && (
+                                    <div
+                                      style={{
+                                        fontSize: '0.85rem',
+                                        color: '#dc2626',
+                                        background: '#fef2f2',
+                                        padding: '6px 10px',
+                                        borderRadius: 6,
+                                      }}
+                                    >
+                                      <strong>Reason:</strong> {q.reason}
+                                    </div>
+                                  )}
+                                  {q.photos?.length > 0 && (
+                                    <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                                      {q.photos.map((qp, qpi) => (
+                                        <img
+                                          key={qpi}
+                                          src={qp}
+                                          alt="Question issue photo"
+                                          onClick={() => setLightboxPhoto(qp)}
+                                          style={{
+                                            width: 48,
+                                            height: 48,
+                                            borderRadius: 6,
+                                            objectFit: 'cover',
+                                            cursor: 'pointer',
+                                            border: '1px solid var(--color-border)',
+                                          }}
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
                       </div>
-                      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {stage.questions?.map((q, qIdx) => (
-                          <div
-                            key={qIdx}
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: 6,
-                              paddingBottom: 10,
-                              borderBottom:
-                                qIdx < stage.questions.length - 1 ? '1px dashed #f1f5f9' : 'none',
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                              <span style={{ fontSize: '0.9rem', color: '#334155' }}>
-                                {q.questionText}
-                              </span>
-                              <span
-                                style={{
-                                  padding: '2px 8px',
-                                  borderRadius: 4,
-                                  fontSize: '0.8rem',
-                                  fontWeight: 700,
-                                  textTransform: 'uppercase',
-                                  background: q.answer === 'yes' ? '#dcfce7' : '#fee2e2',
-                                  color: q.answer === 'yes' ? '#15803d' : '#b91c1c',
-                                  alignSelf: 'flex-start',
-                                }}
-                              >
-                                {q.answer}
-                              </span>
-                            </div>
-                            {q.answer === 'no' && q.reason && (
-                              <div
-                                style={{
-                                  fontSize: '0.85rem',
-                                  color: '#dc2626',
-                                  background: '#fef2f2',
-                                  padding: '6px 10px',
-                                  borderRadius: 6,
-                                }}
-                              >
-                                <strong>Reason:</strong> {q.reason}
-                              </div>
-                            )}
-                            {q.photos?.length > 0 && (
-                              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                                {q.photos.map((qp, qpi) => (
-                                  <img
-                                    key={qpi}
-                                    src={qp}
-                                    alt="Question issue photo"
-                                    onClick={() => setLightboxPhoto(qp)}
-                                    style={{
-                                      width: 48,
-                                      height: 48,
-                                      borderRadius: 6,
-                                      objectFit: 'cover',
-                                      cursor: 'pointer',
-                                      border: '1px solid var(--color-border)',
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div style={{ marginTop: 24, textAlign: 'right' }}>
@@ -635,7 +658,7 @@ export default function AuditorDashboard() {
 
       {/* Lightbox for zooming photos */}
       {lightboxPhoto && (
-        <PhotoLightbox photo={lightboxPhoto} onClose={() => setLightboxPhoto(null)} />
+        <PhotoLightbox src={lightboxPhoto} onClose={() => setLightboxPhoto(null)} />
       )}
     </div>
   );

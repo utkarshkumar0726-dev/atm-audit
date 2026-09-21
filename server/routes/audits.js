@@ -99,10 +99,12 @@ router.get('/:id', requireAuth, async (req, res) => {
     const audit = await Audit.findById(req.params.id).populate('auditor', 'id name username');
     if (!audit) return res.status(404).json({ message: 'Audit not found' });
 
-    const auditorIdStr = audit.auditor?._id?.toString() || audit.auditor?.toString();
-    const isOwner = auditorIdStr === req.user.id?.toString();
+    const auditorIdStr = audit.auditor?._id?.toString() || audit.auditor?.id?.toString() || audit.auditor?.toString() || '';
+    const userIdStr = req.user.id?.toString() || req.user._id?.toString() || '';
+    const isOwner = auditorIdStr === userIdStr;
+
     if (req.user.role !== 'admin' && !isOwner) {
-      return res.status(403).json({ message: 'Forbidden' });
+      return res.status(403).json({ message: 'Forbidden: You can only view audits you conducted' });
     }
 
     res.json(audit);

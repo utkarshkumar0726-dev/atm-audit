@@ -6,19 +6,9 @@ const auditSchema = new mongoose.Schema(
     area: { type: String, required: true },
     auditor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     photos: [{ type: String }],
-    stages: [
-      {
-        stageName: String,
-        responses: [
-          {
-            questionText: String,
-            answer: { type: String, enum: ['yes', 'no', 'na'] },
-          },
-        ],
-      },
-    ],
+    stages: { type: Array, default: [] },
   },
-  { timestamps: true }
+  { timestamps: true, strict: false }
 );
 
 module.exports = mongoose.model('Audit', auditSchema);
