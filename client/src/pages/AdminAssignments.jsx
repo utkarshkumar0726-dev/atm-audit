@@ -11,7 +11,7 @@ export default function AdminAssignments() {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters & Search
+  // Filters & Search in table
   const [search, setSearch] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedZone, setSelectedZone] = useState('');
@@ -19,16 +19,21 @@ export default function AdminAssignments() {
   const [selectedStatus, setSelectedStatus] = useState(''); // '' | 'assigned' | 'unassigned'
   const [selectedAuditorFilter, setSelectedAuditorFilter] = useState('');
 
-  // Multi-select state
+  // Multi-select state in table
   const [selectedAtmIds, setSelectedAtmIds] = useState(new Set());
   const [bulkAuditorId, setBulkAuditorId] = useState('');
   const [bulkAssigning, setBulkAssigning] = useState(false);
 
-  // Branch quick assign panel state
-  const [showBranchAssign, setShowBranchAssign] = useState(false);
-  const [branchAssignAuditor, setBranchAssignAuditor] = useState('');
-  const [branchAssignTarget, setBranchAssignTarget] = useState('');
-  const [branchAssigning, setBranchAssigning] = useState(false);
+  // Modal Form State
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [modalMode, setModalMode] = useState('atms'); // 'atms' | 'branch' | 'zone'
+  const [modalSelectedAtmIds, setModalSelectedAtmIds] = useState(new Set());
+  const [modalAuditorId, setModalAuditorId] = useState('');
+  const [modalBranch, setModalBranch] = useState('');
+  const [modalZone, setModalZone] = useState('');
+  const [modalAtmSearch, setModalAtmSearch] = useState('');
+  const [modalSubmitting, setModalSubmitting] = useState(false);
+  const [modalError, setModalError] = useState('');
 
   // Feedback notifications
   const [feedback, setFeedback] = useState(null);
@@ -86,14 +91,16 @@ export default function AdminAssignments() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [atms]);
 
-  // Unique zones
+  // Unique zones with counts
   const zoneList = useMemo(() => {
-    const set = new Set();
+    const map = new Map();
     atms.forEach((a) => {
-      const z = a.area?.name || a.zone;
-      if (z) set.add(z);
+      const z = a.area?.name || a.zone || 'General';
+      map.set(z, (map.get(z) || 0) + 1);
     });
-    return Array.from(set).sort();
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [atms]);
 
   // Statistics
@@ -112,7 +119,7 @@ export default function AdminAssignments() {
     };
   }, [atms, assignmentMap, auditors]);
 
-  // Filtered ATMs
+  // Filtered ATMs for the table
   const filteredAtms = useMemo(() => {
     const q = search.trim().toLowerCase();
     return atms.filter((a) => {
@@ -120,33 +127,27 @@ export default function AdminAssignments() {
       const asg = assignmentMap.get(atmKey);
       const isAssigned = !!asg;
 
-      // Status filter
       if (selectedStatus === 'assigned' && !isAssigned) return false;
       if (selectedStatus === 'unassigned' && isAssigned) return false;
 
-      // Auditor filter
       if (selectedAuditorFilter) {
         if (!asg || (asg.auditor?._id !== selectedAuditorFilter && asg.auditor?.id !== selectedAuditorFilter)) {
           return false;
         }
       }
 
-      // Branch filter
       if (selectedBranch) {
         const b = a.branchName?.trim() || a.location?.trim() || '';
         if (b.toLowerCase() !== selectedBranch.toLowerCase()) return false;
       }
 
-      // Zone filter
       if (selectedZone) {
         const z = a.area?.name || a.zone || '';
         if (z.toLowerCase() !== selectedZone.toLowerCase()) return false;
       }
 
-      // Vendor filter
       if (selectedVendor && a.vendor !== selectedVendor) return false;
 
-      // Text search
       if (!q) return true;
       return (
         a.atmId?.toLowerCase().includes(q) ||
@@ -170,7 +171,20 @@ export default function AdminAssignments() {
     assignmentMap,
   ]);
 
-  // Selection handlers
+  // Filtered ATMs inside the Modal
+  const modalFilteredAtms = useMemo(() => {
+    const q = modalAtmSearch.trim().toLowerCase();
+    if (!q) return atms;
+    return atms.filter(
+      (a) =>
+        a.atmId?.toLowerCase().includes(q) ||
+        a.branchName?.toLowerCase().includes(q) ||
+        a.location?.toLowerCase().includes(q) ||
+        (a.area?.name || a.zone || '').toLowerCase().includes(q)
+    );
+  }, [atms, modalAtmSearch]);
+
+  // Table selection handlers
   function toggleSelectAtm(id) {
     setSelectedAtmIds((prev) => {
       const next = new Set(prev);
@@ -188,14 +202,12 @@ export default function AdminAssignments() {
 
   function toggleSelectAllFiltered() {
     if (allFilteredSelected) {
-      // Unselect filtered
       setSelectedAtmIds((prev) => {
         const next = new Set(prev);
         filteredAtms.forEach((a) => next.delete(String(a._id || a.id)));
         return next;
       });
     } else {
-      // Select all filtered
       setSelectedAtmIds((prev) => {
         const next = new Set(prev);
         filteredAtms.forEach((a) => next.add(String(a._id || a.id)));
@@ -208,32 +220,106 @@ export default function AdminAssignments() {
     setSelectedAtmIds(new Set());
   }
 
-  // Bulk Assign
-  async function handleBulkAssign() {
-    if (!bulkAuditorId) {
-      showToast('Please choose an auditor to assign selected ATMs to', 'error');
+  // Open the Assign Modal
+  function openAssignModal(prefill = {}) {
+    setModalError('');
+    if (prefill.atmId) {
+      setModalMode('atms');
+      setModalSelectedAtmIds(new Set([String(prefill.atmId)]));
+      setModalAuditorId(prefill.currentAuditorId || '');
+    } else if (selectedAtmIds.size > 0) {
+      setModalMode('atms');
+      setModalSelectedAtmIds(new Set(selectedAtmIds));
+      setModalAuditorId(bulkAuditorId || '');
+    } else {
+      setModalMode('atms');
+      setModalSelectedAtmIds(new Set());
+      setModalAuditorId('');
+    }
+    setModalBranch(prefill.branch || '');
+    setModalZone(prefill.zone || '');
+    setModalAtmSearch('');
+    setShowAssignModal(true);
+  }
+
+  function closeAssignModal() {
+    setShowAssignModal(false);
+    setModalError('');
+  }
+
+  function toggleModalAtm(id) {
+    setModalSelectedAtmIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  // Submit the Assign Modal Form
+  async function handleModalSubmit(e) {
+    e.preventDefault();
+    setModalError('');
+
+    if (!modalAuditorId) {
+      setModalError('Please select an Auditor');
       return;
     }
-    if (selectedAtmIds.size === 0) return;
 
-    setBulkAssigning(true);
+    setModalSubmitting(true);
     try {
-      const res = await api.post('/assignments/bulk', {
-        auditorId: bulkAuditorId,
-        atmIds: Array.from(selectedAtmIds),
-      });
-      showToast(res.data.message || `Successfully assigned ${selectedAtmIds.size} ATMs!`);
+      if (modalMode === 'atms') {
+        if (modalSelectedAtmIds.size === 0) {
+          setModalError('Please select at least one ATM to assign');
+          setModalSubmitting(false);
+          return;
+        }
+
+        const res = await api.post('/assignments/bulk', {
+          auditorId: modalAuditorId,
+          atmIds: Array.from(modalSelectedAtmIds),
+        });
+        showToast(res.data.message || `Assigned ${modalSelectedAtmIds.size} ATM(s) successfully!`);
+      } else if (modalMode === 'branch') {
+        if (!modalBranch) {
+          setModalError('Please select a branch name');
+          setModalSubmitting(false);
+          return;
+        }
+
+        const res = await api.post('/assignments/by-branch', {
+          branchName: modalBranch,
+          auditorId: modalAuditorId,
+        });
+        showToast(res.data.message || `Assigned branch ATMs successfully!`);
+      } else if (modalMode === 'zone') {
+        if (!modalZone) {
+          setModalError('Please select a zone');
+          setModalSubmitting(false);
+          return;
+        }
+
+        const res = await api.post('/assignments/by-branch', {
+          zoneName: modalZone,
+          auditorId: modalAuditorId,
+        });
+        showToast(res.data.message || `Assigned zone ATMs successfully!`);
+      }
+
+      setShowAssignModal(false);
       setSelectedAtmIds(new Set());
-      setBulkAuditorId('');
       loadData();
     } catch (err) {
-      showToast(err.response?.data?.message || 'Bulk assignment failed', 'error');
+      setModalError(err.response?.data?.message || 'Assignment failed');
     } finally {
-      setBulkAssigning(false);
+      setModalSubmitting(false);
     }
   }
 
-  // Bulk Unassign
+  // Bulk Unassign from selection
   async function handleBulkUnassign() {
     if (selectedAtmIds.size === 0) return;
     if (!window.confirm(`Are you sure you want to unassign ${selectedAtmIds.size} selected ATM(s)?`)) {
@@ -255,60 +341,18 @@ export default function AdminAssignments() {
     }
   }
 
-  // Single Inline Assign / Reassign
-  async function handleSingleAssign(atmId, auditorId) {
-    if (!auditorId) {
-      // Unassign
-      const atmKey = String(atmId);
-      const asg = assignmentMap.get(atmKey);
-      if (asg) {
-        try {
-          await api.delete(`/assignments/${asg._id || asg.id}`);
-          showToast('ATM unassigned successfully');
-          loadData();
-        } catch (err) {
-          showToast(err.response?.data?.message || 'Failed to unassign', 'error');
-        }
+  // Single unassign
+  async function handleSingleUnassign(atmId) {
+    const atmKey = String(atmId);
+    const asg = assignmentMap.get(atmKey);
+    if (asg) {
+      try {
+        await api.delete(`/assignments/${asg._id || asg.id}`);
+        showToast('ATM unassigned successfully');
+        loadData();
+      } catch (err) {
+        showToast(err.response?.data?.message || 'Failed to unassign', 'error');
       }
-      return;
-    }
-
-    try {
-      await api.post('/assignments', {
-        auditorId,
-        atmId,
-        reassign: true,
-      });
-      showToast('ATM assigned successfully');
-      loadData();
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to assign ATM', 'error');
-    }
-  }
-
-  // Quick Assign By Branch
-  async function handleAssignByBranch(e) {
-    e.preventDefault();
-    if (!branchAssignTarget || !branchAssignAuditor) {
-      showToast('Please select both a Branch and an Auditor', 'error');
-      return;
-    }
-
-    setBranchAssigning(true);
-    try {
-      const res = await api.post('/assignments/by-branch', {
-        branchName: branchAssignTarget,
-        auditorId: branchAssignAuditor,
-      });
-      showToast(res.data.message || `Assigned branch ATMs successfully!`);
-      setBranchAssignTarget('');
-      setBranchAssignAuditor('');
-      setShowBranchAssign(false);
-      loadData();
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to assign by branch', 'error');
-    } finally {
-      setBranchAssigning(false);
     }
   }
 
@@ -384,7 +428,6 @@ export default function AdminAssignments() {
               alignItems: 'center',
               justifyContent: 'space-between',
               fontWeight: 500,
-              animation: 'fadeIn 0.2s ease',
             }}
           >
             <span>{feedback.text}</span>
@@ -420,26 +463,30 @@ export default function AdminAssignments() {
               ATM Assignments Management
             </h1>
             <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-              Assign ATMs to auditors individually, in batch via multi-select, or by whole branch name.
+              Assign ATMs to auditors using the assignment form, multi-select checkboxes, or by branch/zone.
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {/* Main Action Button requested by user */}
             <button
-              onClick={() => setShowBranchAssign((prev) => !prev)}
+              onClick={() => openAssignModal()}
               style={{
-                background: showBranchAssign ? '#e2e8f0' : '#f8fafc',
-                color: '#1e293b',
-                border: '1px solid var(--color-border)',
+                background: 'var(--color-primary)',
+                color: '#ffffff',
+                border: 'none',
                 fontWeight: 600,
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
-                padding: '9px 16px',
+                gap: 8,
+                padding: '10px 18px',
                 borderRadius: 8,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)',
               }}
             >
-              🏢 {showBranchAssign ? 'Close Branch Assign' : 'Assign by Branch'}
+              ➕ Assign ATM(s) Form
             </button>
 
             <button
@@ -452,8 +499,10 @@ export default function AdminAssignments() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                padding: '9px 16px',
+                padding: '10px 16px',
                 borderRadius: 8,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
               }}
             >
               📥 Export CSV
@@ -535,83 +584,6 @@ export default function AdminAssignments() {
           </div>
         </div>
 
-        {/* Quick Assign by Branch Collapsible Panel */}
-        {showBranchAssign && (
-          <div
-            style={{
-              padding: 20,
-              background: '#f1f5f9',
-              borderRadius: 12,
-              border: '1px solid #cbd5e1',
-              marginBottom: 24,
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>
-                🏢 Bulk Assign by Branch Name
-              </h3>
-              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                Assigns all ATMs belonging to the chosen branch in one click
-              </span>
-            </div>
-
-            <form
-              onSubmit={handleAssignByBranch}
-              style={{
-                display: 'flex',
-                gap: 12,
-                flexWrap: 'wrap',
-                alignItems: 'center',
-              }}
-            >
-              <div style={{ flex: '1 1 260px' }}>
-                <select
-                  value={branchAssignTarget}
-                  onChange={(e) => setBranchAssignTarget(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, background: '#fff' }}
-                >
-                  <option value="">-- Select Branch Name --</option>
-                  {branchList.map((b) => (
-                    <option key={b.name} value={b.name}>
-                      {b.name} ({b.count} ATM{b.count > 1 ? 's' : ''})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ flex: '1 1 220px' }}>
-                <select
-                  value={branchAssignAuditor}
-                  onChange={(e) => setBranchAssignAuditor(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, background: '#fff' }}
-                >
-                  <option value="">-- Select Auditor --</option>
-                  {auditors.map((aud) => (
-                    <option key={aud._id || aud.id} value={aud._id || aud.id}>
-                      {aud.name} (@{aud.username})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                disabled={branchAssigning}
-                style={{
-                  padding: '10px 20px',
-                  fontWeight: 600,
-                  borderRadius: 8,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {branchAssigning ? 'Assigning...' : 'Assign All ATMs in Branch'}
-              </button>
-            </form>
-          </div>
-        )}
-
         {/* Filter Bar */}
         <div
           style={{
@@ -690,8 +662,8 @@ export default function AdminAssignments() {
               >
                 <option value="">All Zones ({zoneList.length})</option>
                 {zoneList.map((z) => (
-                  <option key={z} value={z}>
-                    {z}
+                  <option key={z.name} value={z.name}>
+                    {z.name} ({z.count})
                   </option>
                 ))}
               </select>
@@ -750,7 +722,7 @@ export default function AdminAssignments() {
               justifyContent: 'space-between',
               flexWrap: 'wrap',
               gap: 12,
-              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)',
+              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)',
               position: 'sticky',
               top: 10,
               zIndex: 100,
@@ -777,29 +749,8 @@ export default function AdminAssignments() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <select
-                value={bulkAuditorId}
-                onChange={(e) => setBulkAuditorId(e.target.value)}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  background: '#334155',
-                  color: '#ffffff',
-                  border: '1px solid #475569',
-                  fontSize: '0.9rem',
-                }}
-              >
-                <option value="">-- Choose Auditor to Assign --</option>
-                {auditors.map((aud) => (
-                  <option key={aud._id || aud.id} value={aud._id || aud.id}>
-                    {aud.name} (@{aud.username})
-                  </option>
-                ))}
-              </select>
-
               <button
-                onClick={handleBulkAssign}
-                disabled={bulkAssigning}
+                onClick={() => openAssignModal()}
                 style={{
                   padding: '8px 18px',
                   background: '#2563eb',
@@ -811,7 +762,7 @@ export default function AdminAssignments() {
                   fontSize: '0.9rem',
                 }}
               >
-                {bulkAssigning ? 'Assigning...' : `Assign (${selectedAtmIds.size}) to Auditor`}
+                ➕ Open Assign Form for ({selectedAtmIds.size}) ATMs
               </button>
 
               <button
@@ -889,14 +840,14 @@ export default function AdminAssignments() {
                       title="Select/Deselect all visible ATMs"
                     />
                   </th>
-                  <th style={{ width: 70 }}>#SL</th>
+                  <th style={{ width: 60 }}>#SL</th>
                   <th>ATM ID</th>
                   <th>Branch Name</th>
                   <th>Zone</th>
                   <th>Vendor</th>
                   <th>Incharge</th>
-                  <th>Assigned Auditor Status</th>
-                  <th style={{ minWidth: 200, textAlign: 'right' }}>Quick Assign</th>
+                  <th>Assignment Status</th>
+                  <th style={{ minWidth: 160, textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1046,7 +997,7 @@ export default function AdminAssignments() {
                               👤 {asg.auditor?.name}
                             </span>
                             <button
-                              onClick={() => handleSingleAssign(atmKey, '')}
+                              onClick={() => handleSingleUnassign(atmKey)}
                               title="Unassign this auditor"
                               style={{
                                 background: '#fee2e2',
@@ -1084,29 +1035,41 @@ export default function AdminAssignments() {
                         )}
                       </td>
 
-                      {/* Inline Quick Assign dropdown */}
+                      {/* Action buttons (Assign / Reassign form trigger) */}
                       <td style={{ textAlign: 'right' }}>
-                        <select
-                          value={assignedAuditorId}
-                          onChange={(e) => handleSingleAssign(atmKey, e.target.value)}
-                          style={{
-                            padding: '6px 10px',
-                            borderRadius: 6,
-                            fontSize: '0.85rem',
-                            border: '1px solid var(--color-border)',
-                            background: asg ? '#f8fafc' : '#ffffff',
-                            fontWeight: 500,
-                            maxWidth: 180,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <option value="">-- {asg ? 'Unassign' : 'Assign Auditor'} --</option>
-                          {auditors.map((aud) => (
-                            <option key={aud._id || aud.id} value={aud._id || aud.id}>
-                              {aud.name} (@{aud.username})
-                            </option>
-                          ))}
-                        </select>
+                        {asg ? (
+                          <button
+                            onClick={() => openAssignModal({ atmId: atmKey, currentAuditorId: assignedAuditorId })}
+                            style={{
+                              padding: '6px 12px',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              borderRadius: 6,
+                              background: '#f1f5f9',
+                              color: '#334155',
+                              border: '1px solid var(--color-border)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✏️ Reassign
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openAssignModal({ atmId: atmKey })}
+                            style={{
+                              padding: '6px 14px',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              borderRadius: 6,
+                              background: '#2563eb',
+                              color: '#ffffff',
+                              border: 'none',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ➕ Assign
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1116,6 +1079,386 @@ export default function AdminAssignments() {
           </div>
         )}
       </div>
+
+      {/* ========================================================= */}
+      {/*              ASSIGNMENT MODAL POPUP FORM                  */}
+      {/* ========================================================= */}
+      {showAssignModal && (
+        <div
+          className="modal-backdrop"
+          onClick={closeAssignModal}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16,
+          }}
+        >
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              background: '#ffffff',
+              borderRadius: 16,
+              maxWidth: 680,
+              width: '100%',
+              maxHeight: '92vh',
+              overflowY: 'auto',
+              padding: 24,
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              margin: 'auto',
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                borderBottom: '1px solid var(--color-border)',
+                paddingBottom: 16,
+                marginBottom: 20,
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.4rem' }}>
+                  Assign ATM(s) to Auditor
+                </h2>
+                <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                  Assign individual ATMs, multiple selected ATMs, or bulk assign by branch / zone.
+                </p>
+              </div>
+
+              <button
+                onClick={closeAssignModal}
+                style={{
+                  background: '#f1f5f9',
+                  border: 'none',
+                  fontSize: '1.25rem',
+                  borderRadius: '50%',
+                  width: 36,
+                  height: 36,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#64748b',
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {modalError && (
+              <div
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  marginBottom: 16,
+                  background: '#fee2e2',
+                  border: '1px solid #f87171',
+                  color: '#991b1b',
+                  fontSize: '0.9rem',
+                }}
+              >
+                {modalError}
+              </div>
+            )}
+
+            <form onSubmit={handleModalSubmit}>
+              {/* Mode Selection Tabs */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: '0.9rem' }}>
+                  Choose Assignment Method:
+                </label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setModalMode('atms')}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 8,
+                      border: '1px solid',
+                      borderColor: modalMode === 'atms' ? 'var(--color-primary)' : 'var(--color-border)',
+                      background: modalMode === 'atms' ? 'rgba(37, 99, 235, 0.1)' : '#f8fafc',
+                      color: modalMode === 'atms' ? 'var(--color-primary)' : '#475569',
+                      fontWeight: modalMode === 'atms' ? 700 : 500,
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    🎯 Specific ATM(s) ({modalSelectedAtmIds.size})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModalMode('branch')}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 8,
+                      border: '1px solid',
+                      borderColor: modalMode === 'branch' ? 'var(--color-primary)' : 'var(--color-border)',
+                      background: modalMode === 'branch' ? 'rgba(37, 99, 235, 0.1)' : '#f8fafc',
+                      color: modalMode === 'branch' ? 'var(--color-primary)' : '#475569',
+                      fontWeight: modalMode === 'branch' ? 700 : 500,
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    🏢 By Branch Name
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModalMode('zone')}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 8,
+                      border: '1px solid',
+                      borderColor: modalMode === 'zone' ? 'var(--color-primary)' : 'var(--color-border)',
+                      background: modalMode === 'zone' ? 'rgba(37, 99, 235, 0.1)' : '#f8fafc',
+                      color: modalMode === 'zone' ? 'var(--color-primary)' : '#475569',
+                      fontWeight: modalMode === 'zone' ? 700 : 500,
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    🗺️ By Zone / Area
+                  </button>
+                </div>
+              </div>
+
+              {/* Mode 1: Select ATMs list */}
+              {modalMode === 'atms' && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <label style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem' }}>
+                      Select ATMs to Assign ({modalSelectedAtmIds.size} selected):
+                    </label>
+                    {modalSelectedAtmIds.size > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setModalSelectedAtmIds(new Set())}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#dc2626',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                        }}
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Search ATMs by ID, Branch, or Zone..."
+                    value={modalAtmSearch}
+                    onChange={(e) => setModalAtmSearch(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, marginBottom: 10, fontSize: '0.9rem' }}
+                  />
+
+                  {/* Scrollable list of checkboxes */}
+                  <div
+                    style={{
+                      maxHeight: 220,
+                      overflowY: 'auto',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 8,
+                      background: '#f8fafc',
+                      padding: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                    }}
+                  >
+                    {modalFilteredAtms.length === 0 && (
+                      <p style={{ padding: 12, textAlign: 'center', color: 'var(--color-text-muted)', margin: 0 }}>
+                        No ATMs found matching search.
+                      </p>
+                    )}
+                    {modalFilteredAtms.map((atm) => {
+                      const id = String(atm._id || atm.id);
+                      const isChecked = modalSelectedAtmIds.has(id);
+                      const asg = assignmentMap.get(id);
+
+                      return (
+                        <div
+                          key={id}
+                          onClick={() => toggleModalAtm(id)}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: 6,
+                            background: isChecked ? '#eff6ff' : '#ffffff',
+                            border: `1px solid ${isChecked ? '#bfdbfe' : '#e2e8f0'}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 10,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {}} // handled by parent onClick
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <span style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: '0.9rem', color: '#1e293b' }}>
+                              {atm.atmId}
+                            </span>
+                            <span style={{ fontSize: '0.85rem', color: '#475569' }}>
+                              {atm.branchName || atm.location || '—'}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: 4, background: '#f1f5f9', color: '#64748b' }}>
+                              {atm.area?.name || atm.zone}
+                            </span>
+                          </div>
+
+                          <div>
+                            {asg ? (
+                              <span style={{ fontSize: '0.75rem', color: '#059669', background: '#dcfce7', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
+                                Assigned: {asg.auditor?.name}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: '#dc2626', background: '#fee2e2', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
+                                Unassigned
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Mode 2: Branch selector */}
+              {modalMode === 'branch' && (
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: '0.9rem' }}>
+                    Select Branch Name:
+                  </label>
+                  <select
+                    value={modalBranch}
+                    onChange={(e) => setModalBranch(e.target.value)}
+                    required
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8 }}
+                  >
+                    <option value="">-- Choose Branch --</option>
+                    {branchList.map((b) => (
+                      <option key={b.name} value={b.name}>
+                        {b.name} ({b.count} ATM{b.count > 1 ? 's' : ''})
+                      </option>
+                    ))}
+                  </select>
+
+                  {modalBranch && (
+                    <div style={{ marginTop: 10, padding: 10, background: '#f1f5f9', borderRadius: 8, fontSize: '0.85rem', color: '#334155' }}>
+                      ℹ️ All ATMs belonging to <strong>{modalBranch}</strong> will be assigned to the selected auditor.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Mode 3: Zone selector */}
+              {modalMode === 'zone' && (
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: '0.9rem' }}>
+                    Select Zone / Area:
+                  </label>
+                  <select
+                    value={modalZone}
+                    onChange={(e) => setModalZone(e.target.value)}
+                    required
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8 }}
+                  >
+                    <option value="">-- Choose Zone / Area --</option>
+                    {zoneList.map((z) => (
+                      <option key={z.name} value={z.name}>
+                        {z.name} ({z.count} ATM{z.count > 1 ? 's' : ''})
+                      </option>
+                    ))}
+                  </select>
+
+                  {modalZone && (
+                    <div style={{ marginTop: 10, padding: 10, background: '#f1f5f9', borderRadius: 8, fontSize: '0.85rem', color: '#334155' }}>
+                      ℹ️ All ATMs located in <strong>{modalZone}</strong> will be assigned to the selected auditor.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Auditor Selection (Required) */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: '0.9rem' }}>
+                  Select Auditor to Assign to *
+                </label>
+                <select
+                  value={modalAuditorId}
+                  onChange={(e) => setModalAuditorId(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: '0.95rem' }}
+                >
+                  <option value="">-- Select Auditor --</option>
+                  {auditors.map((aud) => (
+                    <option key={aud._id || aud.id} value={aud._id || aud.id}>
+                      {aud.name} (@{aud.username})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, borderTop: '1px solid var(--color-border)', paddingTop: 16 }}>
+                <button
+                  type="button"
+                  onClick={closeAssignModal}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: 8,
+                    background: '#f1f5f9',
+                    border: '1px solid var(--color-border)',
+                    color: '#334155',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={modalSubmitting}
+                  style={{
+                    padding: '10px 22px',
+                    borderRadius: 8,
+                    background: 'var(--color-primary)',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontSize: '0.95rem',
+                  }}
+                >
+                  {modalSubmitting ? 'Assigning...' : 'Confirm Assignment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

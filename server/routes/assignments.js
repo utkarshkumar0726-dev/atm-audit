@@ -99,12 +99,12 @@ router.post('/bulk', requireAuth, requireRole('admin'), async (req, res) => {
 // POST /api/assignments/by-branch - assign all ATMs matching a branchName or zone
 router.post('/by-branch', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const { auditorId, branchName, zoneId } = req.body;
+    const { auditorId, branchName, zoneId, zoneName } = req.body;
     if (!auditorId) {
       return res.status(400).json({ message: 'auditorId is required' });
     }
-    if (!branchName && !zoneId) {
-      return res.status(400).json({ message: 'Either branchName or zoneId must be specified' });
+    if (!branchName && !zoneId && !zoneName) {
+      return res.status(400).json({ message: 'Either branchName, zoneId, or zoneName must be specified' });
     }
 
     const auditor = await User.findById(auditorId);
@@ -118,6 +118,9 @@ router.post('/by-branch', requireAuth, requireRole('admin'), async (req, res) =>
     }
     if (zoneId) {
       filter.area = zoneId;
+    } else if (zoneName) {
+      const areaDoc = await Area.findOne({ name: { $regex: new RegExp('^' + zoneName.trim() + '$', 'i') } });
+      if (areaDoc) filter.area = areaDoc._id;
     }
 
     const matchedAtms = await Atm.find(filter).select('_id atmId branchName');
