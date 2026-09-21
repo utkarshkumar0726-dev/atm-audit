@@ -13,8 +13,14 @@ export default function AdminAtms() {
   const [zoneFilter, setZoneFilter] = useState('');
   const [siteTypeFilter, setSiteTypeFilter] = useState('');
 
-  // Selected ATM for detail modal
+  // Modals state
   const [detailAtm, setDetailAtm] = useState(null);
+  const [editingAtm, setEditingAtm] = useState(null);
+  const [atmToDelete, setAtmToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Notifications
+  const [feedback, setFeedback] = useState(null);
 
   // Single ATM form
   const [slNo, setSlNo] = useState('');
@@ -31,7 +37,7 @@ export default function AdminAtms() {
   const [state, setState] = useState('DELHI');
   const [siteType, setSiteType] = useState('ONSITE');
   const [showAddForm, setShowAddForm] = useState(false);
-  const [error, setError] = useState('');
+  const [addError, setAddError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // Bulk Excel Upload state
@@ -43,9 +49,15 @@ export default function AdminAtms() {
   const fileInputRef = useRef(null);
 
   // Edit ATM state
-  const [editingAtm, setEditingAtm] = useState(null);
   const [editError, setEditError] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+
+  function showToast(text, type = 'success') {
+    setFeedback({ text, type });
+    setTimeout(() => {
+      setFeedback(null);
+    }, 5000);
+  }
 
   function loadAtms() {
     api.get('/atms').then((res) => setAtms(res.data));
@@ -81,7 +93,7 @@ export default function AdminAtms() {
     const q = search.trim().toLowerCase();
     return atms.filter((a) => {
       if (vendorFilter && a.vendor !== vendorFilter) return false;
-      if (zoneFilter && (a.area?.name !== zoneFilter && a.zone !== zoneFilter)) return false;
+      if (zoneFilter && a.area?.name !== zoneFilter && a.zone !== zoneFilter) return false;
       if (siteTypeFilter && a.siteType !== siteTypeFilter) return false;
       if (!q) return true;
       return (
@@ -102,7 +114,7 @@ export default function AdminAtms() {
 
   async function handleAddSubmit(e) {
     e.preventDefault();
-    setError('');
+    setAddError('');
     setSubmitting(true);
     try {
       await api.post('/atms', {
@@ -120,6 +132,7 @@ export default function AdminAtms() {
         state,
         siteType,
       });
+      showToast(`ATM ${atmId} added successfully!`);
       setSlNo('');
       setAtmId('');
       setArea('');
@@ -136,7 +149,7 @@ export default function AdminAtms() {
       loadAtms();
       loadAreas();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add ATM');
+      setAddError(err.response?.data?.message || 'Failed to add ATM');
     } finally {
       setSubmitting(false);
     }
@@ -173,6 +186,7 @@ export default function AdminAtms() {
           setExcelMsg(res.data);
           setExcelFile(null);
           if (fileInputRef.current) fileInputRef.current.value = '';
+          showToast('Excel file imported successfully!');
           loadAtms();
           loadAreas();
         } catch (err) {
@@ -196,7 +210,21 @@ export default function AdminAtms() {
 
   function exportFilteredCSV() {
     if (filteredAtms.length === 0) return;
-    const headers = ['SLNO', 'ATMID', 'VENDOR', 'BIC', 'BRANCH NAME', 'PRESENT_INCHARGE', 'INCHARGE_DESIG', 'INCHARGE_CONTACT', 'ZONE', 'ADDRESS', 'PINCODE', 'STATE', 'SITE_TYPE'];
+    const headers = [
+      'SLNO',
+      'ATMID',
+      'VENDOR',
+      'BIC',
+      'BRANCH NAME',
+      'PRESENT_INCHARGE',
+      'INCHARGE_DESIG',
+      'INCHARGE_CONTACT',
+      'ZONE',
+      'ADDRESS',
+      'PINCODE',
+      'STATE',
+      'SITE_TYPE',
+    ];
     const rows = filteredAtms.map((a, i) => [
       a.slNo || i + 1,
       `"${a.atmId || ''}"`,
@@ -226,7 +254,7 @@ export default function AdminAtms() {
   function startEdit(atm) {
     setEditingAtm({
       ...atm,
-      areaId: atm.area?._id || atm.area?.id || atm.areaId || '',
+      areaId: atm.areaId || atm.area?._id || atm.area?.id || '',
     });
     setEditError('');
   }
@@ -256,6 +284,7 @@ export default function AdminAtms() {
         state: editingAtm.state,
         siteType: editingAtm.siteType,
       });
+      showToast(`ATM ${editingAtm.atmId} updated successfully!`);
       setEditingAtm(null);
       loadAtms();
       loadAreas();
@@ -266,14 +295,19 @@ export default function AdminAtms() {
     }
   }
 
-  async function deleteAtm(id) {
-    if (!window.confirm('Are you sure you want to delete this ATM record?')) return;
-    setError('');
+  async function confirmDeleteAtm() {
+    if (!atmToDelete) return;
+    setDeleting(true);
     try {
+      const id = atmToDelete._id || atmToDelete.id;
       await api.delete(`/atms/${id}`);
+      showToast(`ATM ${atmToDelete.atmId} deleted successfully!`);
+      setAtmToDelete(null);
       loadAtms();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to delete ATM');
+      showToast(err.response?.data?.message || 'Failed to delete ATM', 'error');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -290,6 +324,36 @@ export default function AdminAtms() {
       <AdminNav />
 
       <div className="card wide">
+        {/* Toast / Feedback Banner */}
+        {feedback && (
+          <div
+            style={{
+              padding: '12px 18px',
+              borderRadius: 'var(--radius-sm)',
+              marginBottom: 18,
+              fontSize: '0.92rem',
+              fontWeight: 600,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: feedback.type === 'error' ? 'var(--color-danger-soft)' : 'var(--color-success-soft)',
+              color: feedback.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)',
+              border: `1px solid ${feedback.type === 'error' ? '#fca5a5' : '#86efac'}`,
+              animation: 'modalPopIn 0.2s ease',
+            }}
+          >
+            <span>{feedback.type === 'error' ? '⚠️ ' : '✅ '} {feedback.text}</span>
+            <button
+              type="button"
+              className="link"
+              onClick={() => setFeedback(null)}
+              style={{ color: 'inherit', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Header Title & Actions */}
         <div
           style={{
@@ -318,7 +382,7 @@ export default function AdminAtms() {
             </button>
             <button
               type="button"
-              className={showUploadCard ? 'btn-secondary' : 'btn-secondary'}
+              className="btn-secondary"
               onClick={() => setShowUploadCard(!showUploadCard)}
             >
               📊 {showUploadCard ? 'Hide Excel Tool' : 'Excel Import'}
@@ -349,7 +413,9 @@ export default function AdminAtms() {
               <span className="kpi-label">Provigil Vendor</span>
               <span className="kpi-icon">🛡️</span>
             </div>
-            <div className="kpi-value" style={{ color: '#0284c7' }}>{stats.provigil}</div>
+            <div className="kpi-value" style={{ color: '#0284c7' }}>
+              {stats.provigil}
+            </div>
             <div className="kpi-subtext">{Math.round((stats.provigil / (stats.total || 1)) * 100)}% of total network</div>
           </div>
 
@@ -358,7 +424,9 @@ export default function AdminAtms() {
               <span className="kpi-label">CMS Vendor</span>
               <span className="kpi-icon">⚡</span>
             </div>
-            <div className="kpi-value" style={{ color: '#d97706' }}>{stats.cms}</div>
+            <div className="kpi-value" style={{ color: '#d97706' }}>
+              {stats.cms}
+            </div>
             <div className="kpi-subtext">{Math.round((stats.cms / (stats.total || 1)) * 100)}% of total network</div>
           </div>
 
@@ -367,7 +435,9 @@ export default function AdminAtms() {
               <span className="kpi-label">Operating Zones</span>
               <span className="kpi-icon">📍</span>
             </div>
-            <div className="kpi-value" style={{ color: '#059669' }}>{stats.zones}</div>
+            <div className="kpi-value" style={{ color: '#059669' }}>
+              {stats.zones}
+            </div>
             <div className="kpi-subtext">Delhi, Gurugram, Jaipur</div>
           </div>
         </div>
@@ -431,7 +501,8 @@ export default function AdminAtms() {
               >
                 ✅ <strong>{excelMsg.message}!</strong>
                 <div style={{ marginTop: 4, fontSize: '0.84rem' }}>
-                  Total Rows: <strong>{excelMsg.totalRows}</strong> | New: <strong>{excelMsg.created}</strong> | Updated: <strong>{excelMsg.updated}</strong>
+                  Total Rows: <strong>{excelMsg.totalRows}</strong> | New: <strong>{excelMsg.created}</strong> | Updated:{' '}
+                  <strong>{excelMsg.updated}</strong>
                   {excelMsg.newAreasCreated?.length > 0 && (
                     <span> | New Zones: {excelMsg.newAreasCreated.join(', ')}</span>
                   )}
@@ -525,7 +596,11 @@ export default function AdminAtms() {
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
                   <label>Full Address</label>
-                  <input placeholder="e.g. 1902, Chandni Chowk, Opposite Gurudware sis Ganj Sahib..." value={address} onChange={(e) => setAddress(e.target.value)} />
+                  <input
+                    placeholder="e.g. 1902, Chandni Chowk, Opposite Gurudware sis Ganj Sahib..."
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                  />
                 </div>
               </div>
               <div style={{ marginTop: 18, display: 'flex', gap: 10 }}>
@@ -537,7 +612,7 @@ export default function AdminAtms() {
                 </button>
               </div>
             </form>
-            {error && <p className="error" style={{ marginTop: 14 }}>{error}</p>}
+            {addError && <p className="error" style={{ marginTop: 14 }}>{addError}</p>}
           </div>
         )}
 
@@ -562,11 +637,7 @@ export default function AdminAtms() {
             )}
           </div>
 
-          <select
-            className="filter-select"
-            value={vendorFilter}
-            onChange={(e) => setVendorFilter(e.target.value)}
-          >
+          <select className="filter-select" value={vendorFilter} onChange={(e) => setVendorFilter(e.target.value)}>
             <option value="">All Vendors ({atms.length})</option>
             {vendors.map((v) => (
               <option key={v} value={v}>
@@ -575,11 +646,7 @@ export default function AdminAtms() {
             ))}
           </select>
 
-          <select
-            className="filter-select"
-            value={zoneFilter}
-            onChange={(e) => setZoneFilter(e.target.value)}
-          >
+          <select className="filter-select" value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)}>
             <option value="">All Zones ({areas.length})</option>
             {areas.map((ar) => (
               <option key={ar.name} value={ar.name}>
@@ -588,11 +655,7 @@ export default function AdminAtms() {
             ))}
           </select>
 
-          <select
-            className="filter-select"
-            value={siteTypeFilter}
-            onChange={(e) => setSiteTypeFilter(e.target.value)}
-          >
+          <select className="filter-select" value={siteTypeFilter} onChange={(e) => setSiteTypeFilter(e.target.value)}>
             <option value="">All Site Types</option>
             <option value="ONSITE">ONSITE</option>
             <option value="OFFSITE">OFFSITE</option>
@@ -629,7 +692,6 @@ export default function AdminAtms() {
               </thead>
               <tbody>
                 {filteredAtms.map((a, idx) => {
-                  const id = a._id || a.id;
                   const isProvigil = a.vendor?.toLowerCase().includes('provigil');
                   const siteClass =
                     a.siteType === 'CRM'
@@ -639,7 +701,7 @@ export default function AdminAtms() {
                       : 'badge-site-onsite';
 
                   return (
-                    <tr key={id}>
+                    <tr key={a._id || a.id}>
                       <td style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontWeight: 600 }}>
                         {a.slNo || idx + 1}
                       </td>
@@ -650,9 +712,7 @@ export default function AdminAtms() {
                       </td>
                       <td>
                         {a.vendor ? (
-                          <span className={`badge ${isProvigil ? 'badge-provigil' : 'badge-cms'}`}>
-                            {a.vendor}
-                          </span>
+                          <span className={`badge ${isProvigil ? 'badge-provigil' : 'badge-cms'}`}>{a.vendor}</span>
                         ) : (
                           '-'
                         )}
@@ -663,9 +723,7 @@ export default function AdminAtms() {
                         </code>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600, color: '#1e293b' }}>
-                          {a.branchName || a.location || '-'}
-                        </div>
+                        <div style={{ fontWeight: 600, color: '#1e293b' }}>{a.branchName || a.location || '-'}</div>
                       </td>
                       <td>
                         <div style={{ fontWeight: 500 }}>{a.inchargeName || '-'}</div>
@@ -683,21 +741,13 @@ export default function AdminAtms() {
                         )}
                       </td>
                       <td>
-                        <span className="badge badge-zone">
-                          {a.area?.name || a.zone || '-'}
-                        </span>
+                        <span className="badge badge-zone">{a.area?.name || a.zone || '-'}</span>
                       </td>
                       <td>
                         <span style={{ fontSize: '0.82rem', fontWeight: 500 }}>{a.state || '-'}</span>
                       </td>
                       <td>
-                        {a.siteType ? (
-                          <span className={`badge ${siteClass}`}>
-                            {a.siteType}
-                          </span>
-                        ) : (
-                          '-'
-                        )}
+                        {a.siteType ? <span className={`badge ${siteClass}`}>{a.siteType}</span> : '-'}
                       </td>
                       <td style={{ maxWidth: 210, fontSize: '0.8rem' }} title={a.address}>
                         <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--color-text-muted)' }}>
@@ -715,7 +765,7 @@ export default function AdminAtms() {
                             type="button"
                             className="btn-secondary"
                             onClick={() => setDetailAtm(a)}
-                            style={{ padding: '4px 9px', fontSize: '0.78rem', borderRadius: 6 }}
+                            style={{ padding: '5px 10px', fontSize: '0.8rem', borderRadius: 6, cursor: 'pointer' }}
                           >
                             Details
                           </button>
@@ -723,15 +773,21 @@ export default function AdminAtms() {
                             type="button"
                             className="btn-secondary"
                             onClick={() => startEdit(a)}
-                            style={{ padding: '4px 9px', fontSize: '0.78rem', borderRadius: 6 }}
+                            style={{ padding: '5px 10px', fontSize: '0.8rem', borderRadius: 6, cursor: 'pointer' }}
                           >
                             Edit
                           </button>
                           <button
                             type="button"
                             className="link"
-                            onClick={() => deleteAtm(id)}
-                            style={{ fontSize: '0.78rem', color: 'var(--color-danger)', marginLeft: 4 }}
+                            onClick={() => setAtmToDelete(a)}
+                            style={{
+                              fontSize: '0.8rem',
+                              color: 'var(--color-danger)',
+                              marginLeft: 4,
+                              cursor: 'pointer',
+                              padding: '5px 8px',
+                            }}
                           >
                             Delete
                           </button>
@@ -750,57 +806,94 @@ export default function AdminAtms() {
       {detailAtm && (
         <div className="modal-backdrop" onClick={() => setDetailAtm(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 660, padding: 28 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, borderBottom: '1px solid var(--color-border)', paddingBottom: 14 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 18,
+                borderBottom: '1px solid var(--color-border)',
+                paddingBottom: 14,
+              }}
+            >
               <div>
-                <span className="badge badge-provigil" style={{ marginBottom: 6 }}>
+                <span
+                  className={`badge ${
+                    detailAtm.vendor?.toLowerCase().includes('provigil') ? 'badge-provigil' : 'badge-cms'
+                  }`}
+                  style={{ marginBottom: 6 }}
+                >
                   {detailAtm.vendor || 'ATM Site'}
                 </span>
                 <h2 style={{ margin: 0, border: 'none', padding: 0, fontSize: '1.35rem', color: 'var(--color-primary-dark)' }}>
                   {detailAtm.atmId} &mdash; {detailAtm.branchName || detailAtm.location}
                 </h2>
               </div>
-              <button type="button" className="btn-secondary" onClick={() => setDetailAtm(null)} style={{ padding: '6px 12px', borderRadius: 999 }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setDetailAtm(null)}
+                style={{ padding: '6px 12px', borderRadius: 999 }}
+              >
                 ✕
               </button>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, fontSize: '0.92rem' }}>
               <div>
-                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>Serial No</span>
+                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>
+                  Serial No
+                </span>
                 <strong>{detailAtm.slNo || '-'}</strong>
               </div>
               <div>
-                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>BIC Code</span>
+                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>
+                  BIC Code
+                </span>
                 <code>{detailAtm.bic || '-'}</code>
               </div>
               <div>
-                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>Operating Zone</span>
+                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>
+                  Operating Zone
+                </span>
                 <span className="badge badge-zone">{detailAtm.area?.name || detailAtm.zone || '-'}</span>
               </div>
               <div>
-                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>Site Type</span>
+                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>
+                  Site Type
+                </span>
                 <strong>{detailAtm.siteType || 'ONSITE'}</strong>
               </div>
               <div>
-                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>State</span>
+                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>
+                  State
+                </span>
                 <strong>{detailAtm.state || '-'}</strong>
               </div>
               <div>
-                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>Postal PIN</span>
+                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>
+                  Postal PIN
+                </span>
                 <strong>{detailAtm.pincode || '-'}</strong>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>Complete Address</span>
+                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>
+                  Complete Address
+                </span>
                 <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: 8, marginTop: 4 }}>
                   {detailAtm.address || '-'}
                 </div>
               </div>
               <div>
-                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>Present In-Charge</span>
+                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>
+                  Present In-Charge
+                </span>
                 <strong>{detailAtm.inchargeName || '-'}</strong>
               </div>
               <div>
-                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>Direct Contact</span>
+                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>
+                  Direct Contact
+                </span>
                 {detailAtm.inchargeContact ? (
                   <a href={`tel:${detailAtm.inchargeContact}`} className="phone-pill" style={{ marginTop: 4 }}>
                     📞 {detailAtm.inchargeContact}
@@ -810,7 +903,9 @@ export default function AdminAtms() {
                 )}
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>Designation</span>
+                <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>
+                  Designation
+                </span>
                 <div style={{ color: '#475569', marginTop: 2 }}>{detailAtm.inchargeDesig || '-'}</div>
               </div>
             </div>
@@ -957,6 +1052,62 @@ export default function AdminAtms() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {atmToDelete && (
+        <div className="modal-backdrop" onClick={() => setAtmToDelete(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460, padding: 26 }}>
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '50%',
+                  background: 'var(--color-danger-soft)',
+                  color: 'var(--color-danger)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 12px',
+                  fontSize: '1.5rem',
+                }}
+              >
+                🗑️
+              </div>
+              <h2 style={{ margin: '0 0 6px', border: 'none', padding: 0, fontSize: '1.25rem' }}>
+                Delete ATM Site?
+              </h2>
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+                Are you sure you want to remove <strong>{atmToDelete.atmId}</strong> &mdash;{' '}
+                {atmToDelete.branchName || atmToDelete.location}? This action cannot be undone.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 22 }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setAtmToDelete(null)}
+                style={{ minWidth: 100 }}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteAtm}
+                style={{
+                  background: 'var(--color-danger)',
+                  minWidth: 120,
+                }}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

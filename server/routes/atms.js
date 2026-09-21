@@ -147,6 +147,7 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
     }
 
     const atm = await Atm.create({
+      slNo: Number(slNo) || 0,
       atmId: atmId.trim(),
       areaId: area,
       location: location?.trim() || branchName?.trim() || '',
@@ -157,6 +158,7 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
       inchargeDesig: inchargeDesig?.trim() || '',
       inchargeContact: inchargeContact?.trim() || '',
       address: address?.trim() || '',
+      pincode: pincode?.trim() || '',
       state: state?.trim() || '',
       siteType: siteType?.trim() || '',
     });
@@ -304,6 +306,7 @@ router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
 
     atm.atmId = atmId.trim();
     atm.areaId = area;
+    if (slNo !== undefined) atm.slNo = Number(slNo) || 0;
     if (location !== undefined) atm.location = location?.trim() || '';
     if (vendor !== undefined) atm.vendor = vendor?.trim() || '';
     if (bic !== undefined) atm.bic = bic?.trim() || '';
@@ -312,6 +315,7 @@ router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
     if (inchargeDesig !== undefined) atm.inchargeDesig = inchargeDesig?.trim() || '';
     if (inchargeContact !== undefined) atm.inchargeContact = inchargeContact?.trim() || '';
     if (address !== undefined) atm.address = address?.trim() || '';
+    if (pincode !== undefined) atm.pincode = pincode?.trim() || '';
     if (state !== undefined) atm.state = state?.trim() || '';
     if (siteType !== undefined) atm.siteType = siteType?.trim() || '';
     await atm.save();
