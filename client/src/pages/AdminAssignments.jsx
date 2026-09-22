@@ -919,6 +919,11 @@ export default function AdminAssignments() {
                             BIC: {atm.bic}
                           </div>
                         )}
+                        {atm.address && (
+                          <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: 3, maxWidth: 280, wordBreak: 'break-word', lineHeight: 1.35 }}>
+                            📍 {atm.address} {atm.pincode ? `(${atm.pincode})` : ''}
+                          </div>
+                        )}
                       </td>
 
                       {/* Zone */}

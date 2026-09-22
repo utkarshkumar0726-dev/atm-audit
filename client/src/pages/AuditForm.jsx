@@ -511,7 +511,25 @@ export default function AuditForm() {
                   {selectedAtm.siteType && <span className="role-badge" style={{ background: '#e2e8f0', color: '#334155' }}>{selectedAtm.siteType}</span>}
                 </div>
               </div>
-              {selectedAtm.address && <div style={{ color: 'var(--color-text-muted)', marginBottom: 6 }}>{selectedAtm.address}</div>}
+              {selectedAtm.address && (
+                <div
+                  style={{
+                    color: '#1e293b',
+                    marginBottom: 8,
+                    fontSize: '0.88rem',
+                    lineHeight: 1.45,
+                    background: '#ffffff',
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    border: '1px solid #e2e8f0',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  📍 <strong>Full Address:</strong> {selectedAtm.address}
+                  {selectedAtm.pincode && <span> &bull; <strong>PIN:</strong> {selectedAtm.pincode}</span>}
+                  {selectedAtm.state && <span> &bull; <strong>State:</strong> {selectedAtm.state}</span>}
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '0.82rem' }}>
                 {selectedAtm.inchargeName && (
                   <span>
@@ -708,8 +726,14 @@ export default function AuditForm() {
               <h1 style={{ margin: 0 }}>ATM Audit Form</h1>
               <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
                 ATM ID: <strong>{selectedAtm.atmId}</strong> &middot; Area: <strong>{selectedAtm.area?.name}</strong>
+                {selectedAtm.branchName && <> &middot; <strong>{selectedAtm.branchName}</strong></>}
                 {photos.length > 1 && <> &middot; {photos.length} photos attached</>}
               </p>
+              {selectedAtm.address && (
+                <p style={{ margin: '4px 0 0', color: '#475569', fontSize: '0.84rem', lineHeight: 1.4, wordBreak: 'break-word', maxWidth: 650 }}>
+                  📍 {selectedAtm.address} {selectedAtm.pincode ? `(PIN: ${selectedAtm.pincode})` : ''}
+                </p>
+              )}
             </div>
           </div>
 

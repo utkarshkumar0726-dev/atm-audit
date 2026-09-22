@@ -387,6 +387,11 @@ export default function AuditorDashboard() {
                         Vendor: {atm.vendor}
                       </div>
                     )}
+                    {atm.address && (
+                      <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: 5, lineHeight: 1.35, wordBreak: 'break-word' }}>
+                        📍 {atm.address} {atm.pincode ? `(PIN: ${atm.pincode})` : ''}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                     <button

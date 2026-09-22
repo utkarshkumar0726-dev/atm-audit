@@ -918,14 +918,14 @@ export default function AdminAtms() {
                           <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>-</span>
                         )}
                       </td>
-                      <td style={{ maxWidth: 210, fontSize: '0.8rem' }} title={a.address}>
-                        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--color-text-muted)' }}>
+                      <td style={{ minWidth: 260, maxWidth: 380, fontSize: '0.82rem', lineHeight: 1.45 }}>
+                        <div style={{ color: 'var(--color-text)', wordBreak: 'break-word', whiteSpace: 'normal' }}>
                           {a.address || '-'}
                         </div>
                         {a.pincode && (
-                          <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                            PIN: {a.pincode}
-                          </span>
+                          <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: 3, fontWeight: 500 }}>
+                            📮 PIN: {a.pincode}
+                          </div>
                         )}
                       </td>
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
