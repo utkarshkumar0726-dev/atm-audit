@@ -10,6 +10,8 @@ export default function Topbar({ children }) {
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [showPasswordFields, setShowPasswordFields] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -21,6 +23,8 @@ export default function Topbar({ children }) {
   function openModal() {
     setName(user?.name || '');
     setUsername(user?.username || '');
+    setEmail(user?.email || '');
+    setPhone(user?.phone || '');
     setShowPasswordFields(false);
     setCurrentPassword('');
     setNewPassword('');
@@ -68,6 +72,8 @@ export default function Topbar({ children }) {
       const payload = {
         name: name.trim(),
         username: username.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
       };
       if (showPasswordFields && newPassword) {
         payload.currentPassword = currentPassword;
@@ -238,6 +244,34 @@ export default function Topbar({ children }) {
                       Used to login to ATMAudit360
                     </small>
                   </label>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <label style={{ margin: 0 }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>
+                        Email ID
+                      </span>
+                      <input
+                        type="email"
+                        placeholder="e.g. user@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        style={{ marginTop: 4, width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </label>
+
+                    <label style={{ margin: 0 }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>
+                        Phone Number
+                      </span>
+                      <input
+                        type="tel"
+                        placeholder="e.g. +91 9876543210"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        style={{ marginTop: 4, width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
 

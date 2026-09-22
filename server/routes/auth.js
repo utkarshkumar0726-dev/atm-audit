@@ -8,7 +8,14 @@ const router = express.Router();
 
 function signToken(user) {
   return jwt.sign(
-    { id: user._id.toString(), username: user.username, role: user.role, name: user.name },
+    {
+      id: user._id.toString(),
+      username: user.username,
+      role: user.role,
+      name: user.name,
+      email: user.email || '',
+      phone: user.phone || '',
+    },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '12h' }
   );
@@ -35,7 +42,15 @@ router.post('/login', async (req, res) => {
     const token = signToken(user);
     res.json({
       token,
-      user: { id: user._id, _id: user._id, name: user.name, username: user.username, role: user.role },
+      user: {
+        id: user._id,
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email || '',
+        phone: user.phone || '',
+        role: user.role,
+      },
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -87,10 +102,10 @@ router.put('/change-password', requireAuth, async (req, res) => {
   }
 });
 
-// PUT /api/auth/profile - logged-in user updates their profile details (name, username, and optional password)
+// PUT /api/auth/profile - logged-in user updates their profile details (name, username, email, phone, and optional password)
 router.put('/profile', requireAuth, async (req, res) => {
   try {
-    const { name, username, currentPassword, newPassword } = req.body;
+    const { name, username, email, phone, currentPassword, newPassword } = req.body;
     if (!name || !username) {
       return res.status(400).json({ message: 'Name and username are required' });
     }
@@ -110,6 +125,8 @@ router.put('/profile', requireAuth, async (req, res) => {
     }
 
     user.name = name.trim();
+    if (email !== undefined) user.email = (email || '').trim().toLowerCase();
+    if (phone !== undefined) user.phone = (phone || '').trim();
 
     // If changing password as well
     if (newPassword) {
@@ -137,6 +154,8 @@ router.put('/profile', requireAuth, async (req, res) => {
         _id: user._id,
         name: user.name,
         username: user.username,
+        email: user.email || '',
+        phone: user.phone || '',
         role: user.role,
       },
     });
@@ -149,7 +168,7 @@ router.put('/profile', requireAuth, async (req, res) => {
 // POST /api/auth/auditors - admin creates a new auditor account
 router.post('/auditors', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const { name, username, password } = req.body;
+    const { name, username, password, email, phone } = req.body;
     if (!name || !username || !password) {
       return res.status(400).json({ message: 'name, username, and password are required' });
     }
@@ -163,11 +182,22 @@ router.post('/auditors', requireAuth, requireRole('admin'), async (req, res) => 
     const user = await User.create({
       name: name.trim(),
       username: username.toLowerCase().trim(),
+      email: (email || '').trim().toLowerCase(),
+      phone: (phone || '').trim(),
       password: hashed,
       role: 'auditor',
     });
 
-    res.status(201).json({ id: user._id, _id: user._id, name: user.name, username: user.username, role: user.role });
+    res.status(201).json({
+      id: user._id,
+      _id: user._id,
+      name: user.name,
+      username: user.username,
+      email: user.email || '',
+      phone: user.phone || '',
+      role: user.role,
+      createdAt: user.createdAt,
+    });
   } catch (err) {
     console.error('Create auditor error:', err);
     res.status(500).json({ message: 'Server error creating auditor' });
@@ -187,10 +217,10 @@ router.get('/auditors', requireAuth, requireRole('admin'), async (req, res) => {
   }
 });
 
-// PUT /api/auth/auditors/:id - admin edits an auditor's name/username, optionally resets password
+// PUT /api/auth/auditors/:id - admin edits an auditor's name/username, email, phone, optionally resets password
 router.put('/auditors/:id', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const { name, username, password } = req.body;
+    const { name, username, password, email, phone } = req.body;
     if (!name || !username) {
       return res.status(400).json({ message: 'name and username are required' });
     }
@@ -213,12 +243,23 @@ router.put('/auditors/:id', requireAuth, requireRole('admin'), async (req, res) 
 
     auditor.name = name.trim();
     auditor.username = normalizedUsername;
+    if (email !== undefined) auditor.email = (email || '').trim().toLowerCase();
+    if (phone !== undefined) auditor.phone = (phone || '').trim();
     if (password) {
       auditor.password = await bcrypt.hash(password, 10);
     }
     await auditor.save();
 
-    res.json({ id: auditor._id, _id: auditor._id, name: auditor.name, username: auditor.username, role: auditor.role });
+    res.json({
+      id: auditor._id,
+      _id: auditor._id,
+      name: auditor.name,
+      username: auditor.username,
+      email: auditor.email || '',
+      phone: auditor.phone || '',
+      role: auditor.role,
+      createdAt: auditor.createdAt,
+    });
   } catch (err) {
     console.error('Update auditor error:', err);
     res.status(500).json({ message: 'Server error updating auditor' });
