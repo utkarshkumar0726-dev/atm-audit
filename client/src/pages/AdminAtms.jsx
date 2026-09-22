@@ -887,28 +887,33 @@ export default function AdminAtms() {
                       <td>
                         {a.siteType ? <span className={`badge ${siteClass}`}>{a.siteType}</span> : '-'}
                       </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {a.link ? (
-                          <a
-                            href={a.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              padding: '4px 8px',
-                              borderRadius: 6,
-                              background: '#e0f2fe',
-                              color: '#0369a1',
-                              fontSize: '0.78rem',
-                              fontWeight: 600,
-                              textDecoration: 'none',
-                            }}
-                            title={a.link}
-                          >
-                            🔗 View ↗
-                          </a>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        {((a.links && a.links.length > 0) ? a.links : a.link ? [a.link] : []).length > 0 ? (
+                          <div style={{ display: 'inline-flex', gap: 4 }}>
+                            {((a.links && a.links.length > 0) ? a.links : [a.link]).map((l, i, arr) => (
+                              <a
+                                key={i}
+                                href={l}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3,
+                                  padding: '3px 7px',
+                                  borderRadius: 5,
+                                  background: '#e0f2fe',
+                                  color: '#0369a1',
+                                  fontSize: '0.76rem',
+                                  fontWeight: 600,
+                                  textDecoration: 'none',
+                                }}
+                                title={`Open Link ${arr.length > 1 ? `#${i + 1}` : ''}`}
+                              >
+                                🔗 {arr.length > 1 ? `Link ${i + 1}` : 'View'} ↗
+                              </a>
+                            ))}
+                          </div>
                         ) : (
                           <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>-</span>
                         )}

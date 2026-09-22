@@ -401,29 +401,31 @@ export default function AuditorDashboard() {
                     >
                       Audit This ATM &rarr;
                     </button>
-                    {(atm.link || (atm.links && atm.links.length > 0)) && (
+                    {((atm.links && atm.links.length > 0) ? atm.links : atm.link ? [atm.link] : []).map((l, i, arr) => (
                       <a
-                        href={atm.link || atm.links[0]}
+                        key={i}
+                        href={l}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title="Open Installation / Reference Link in new tab"
+                        title={`Open Installation / Reference Link ${arr.length > 1 ? `#${i + 1}` : ''} in new tab`}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          padding: '8px 12px',
-                          fontSize: '0.82rem',
+                          padding: '8px 10px',
+                          fontSize: '0.8rem',
                           fontWeight: 600,
                           borderRadius: 6,
                           background: '#f0f9ff',
                           color: '#0284c7',
                           border: '1px solid #bae6fd',
                           textDecoration: 'none',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        🔗 Link ↗
+                        🔗 Link {arr.length > 1 ? `${i + 1}` : ''} ↗
                       </a>
-                    )}
+                    ))}
                   </div>
                 </div>
               ))}
