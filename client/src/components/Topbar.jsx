@@ -2,9 +2,16 @@ export default function Topbar({ children }) {
   return (
     <header className="topbar">
       <div className="brand">
-        <span className="brand-mark" style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', fontWeight: 800, fontSize: '0.85rem' }}>
-          360
-        </span>
+        <img
+          src="/favicon.svg"
+          alt="ATMAudit360"
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)',
+          }}
+        />
         <span className="brand-text">
           <span className="brand-name">
             ATMAudit<span style={{ color: 'var(--color-primary)' }}>360</span>
