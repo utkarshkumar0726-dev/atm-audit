@@ -282,7 +282,7 @@ export default function AdminAtms() {
       'DEVICE_ID',
     ];
     const rows = filteredAtms.map((a, i) => [
-      a.slNo || i + 1,
+      !vendorFilter ? i + 1 : (a.slNo || i + 1),
       `"${a.atmId || ''}"`,
       `"${a.vendor || ''}"`,
       `"${a.bic || ''}"`,
@@ -841,7 +841,7 @@ export default function AdminAtms() {
                   return (
                     <tr key={a._id || a.id}>
                       <td style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                        {a.slNo || idx + 1}
+                        {!vendorFilter ? idx + 1 : (a.slNo || idx + 1)}
                       </td>
                       <td>
                         <strong style={{ color: 'var(--color-primary-dark)', fontSize: '0.92rem' }}>

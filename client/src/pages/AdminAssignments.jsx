@@ -851,7 +851,7 @@ export default function AdminAssignments() {
                 </tr>
               </thead>
               <tbody>
-                {filteredAtms.map((atm) => {
+                {filteredAtms.map((atm, idx) => {
                   const atmKey = String(atm._id || atm.id);
                   const asg = assignmentMap.get(atmKey);
                   const isSelected = selectedAtmIds.has(atmKey);
@@ -877,7 +877,7 @@ export default function AdminAssignments() {
 
                       {/* SL No */}
                       <td style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                        {atm.slNo || '-'}
+                        {!selectedVendor ? idx + 1 : (atm.slNo || idx + 1)}
                       </td>
 
                       {/* ATM ID */}
