@@ -233,6 +233,30 @@ p {
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
 }
 
+.topbar-btn-security {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+}
+
+.topbar-btn-security:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-color: rgba(56, 189, 248, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
 /* Admin & Auditor sub-nav */
 
 .admin-nav {
@@ -314,6 +338,12 @@ p {
     padding: 6px 10px;
     font-size: 0.8rem;
     gap: 5px;
+  }
+  .topbar-btn-security .btn-text {
+    display: none;
+  }
+  .topbar-btn-security {
+    padding: 6px 10px;
   }
 }
 
