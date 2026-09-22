@@ -388,18 +388,43 @@ export default function AuditorDashboard() {
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => navigate(`/audit/new?atmId=${atm.atmId}`)}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      borderRadius: 6,
-                    }}
-                  >
-                    Audit This ATM &rarr;
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    <button
+                      onClick={() => navigate(`/audit/new?atmId=${atm.atmId}`)}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        borderRadius: 6,
+                      }}
+                    >
+                      Audit This ATM &rarr;
+                    </button>
+                    {(atm.link || (atm.links && atm.links.length > 0)) && (
+                      <a
+                        href={atm.link || atm.links[0]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Open Installation / Reference Link in new tab"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '8px 12px',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          borderRadius: 6,
+                          background: '#f0f9ff',
+                          color: '#0284c7',
+                          border: '1px solid #bae6fd',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        🔗 Link ↗
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

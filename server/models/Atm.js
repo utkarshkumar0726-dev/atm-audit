@@ -16,6 +16,9 @@ const atmSchema = new mongoose.Schema(
     state: { type: String, default: '', trim: true },
     siteType: { type: String, default: '', trim: true },
     location: { type: String, default: '', trim: true },
+    link: { type: String, default: '', trim: true },
+    links: { type: [String], default: [] },
+    deviceId: { type: String, default: '', trim: true },
   },
   { timestamps: true }
 );

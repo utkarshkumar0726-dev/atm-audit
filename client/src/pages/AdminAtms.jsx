@@ -48,6 +48,13 @@ export default function AdminAtms() {
   const [excelError, setExcelError] = useState('');
   const fileInputRef = useRef(null);
 
+  // Link Sync from Excel state
+  const [linkFile, setLinkFile] = useState(null);
+  const [uploadingLinks, setUploadingLinks] = useState(false);
+  const [linkMsg, setLinkMsg] = useState(null);
+  const [linkError, setLinkError] = useState('');
+  const linkFileInputRef = useRef(null);
+
   // Edit ATM state
   const [editError, setEditError] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
@@ -86,7 +93,8 @@ export default function AdminAtms() {
     const provigil = atms.filter((a) => a.vendor?.toLowerCase().includes('provigil')).length;
     const cms = atms.filter((a) => a.vendor?.toLowerCase().includes('cms')).length;
     const zones = new Set(atms.map((a) => a.area?.name || a.zone).filter(Boolean)).size;
-    return { total, provigil, cms, zones };
+    const withLinks = atms.filter((a) => a.link || (a.links && a.links.length > 0)).length;
+    return { total, provigil, cms, zones, withLinks };
   }, [atms]);
 
   const filteredAtms = useMemo(() => {
@@ -208,6 +216,52 @@ export default function AdminAtms() {
     }
   }
 
+  function handleLinkFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLinkFile(file);
+    setLinkMsg(null);
+    setLinkError('');
+  }
+
+  async function handleLinkUpload() {
+    if (!linkFile) {
+      setLinkError('Please select an Excel or CSV file first');
+      return;
+    }
+    setUploadingLinks(true);
+    setLinkError('');
+    setLinkMsg(null);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64Data = reader.result;
+          const res = await api.post('/atms/import-links', {
+            fileBase64: base64Data,
+          });
+          setLinkMsg(res.data);
+          setLinkFile(null);
+          if (linkFileInputRef.current) linkFileInputRef.current.value = '';
+          showToast(res.data.message || `Successfully linked ${res.data.updatedCount} ATM(s)!`);
+          loadAtms();
+        } catch (err) {
+          setLinkError(err.response?.data?.message || 'Failed to sync links');
+        } finally {
+          setUploadingLinks(false);
+        }
+      };
+      reader.onerror = () => {
+        setLinkError('Failed to read file from disk');
+        setUploadingLinks(false);
+      };
+      reader.readAsDataURL(linkFile);
+    } catch (err) {
+      setLinkError(err.message || 'Upload failed');
+      setUploadingLinks(false);
+    }
+  }
+
   function exportFilteredCSV() {
     if (filteredAtms.length === 0) return;
     const headers = [
@@ -224,6 +278,8 @@ export default function AdminAtms() {
       'PINCODE',
       'STATE',
       'SITE_TYPE',
+      'IR_LINK',
+      'DEVICE_ID',
     ];
     const rows = filteredAtms.map((a, i) => [
       a.slNo || i + 1,
@@ -239,6 +295,8 @@ export default function AdminAtms() {
       `"${a.pincode || ''}"`,
       `"${a.state || ''}"`,
       `"${a.siteType || ''}"`,
+      `"${a.link || ''}"`,
+      `"${a.deviceId || ''}"`,
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
@@ -283,6 +341,8 @@ export default function AdminAtms() {
         pincode: editingAtm.pincode,
         state: editingAtm.state,
         siteType: editingAtm.siteType,
+        link: editingAtm.link,
+        deviceId: editingAtm.deviceId,
       });
       showToast(`ATM ${editingAtm.atmId} updated successfully!`);
       setEditingAtm(null);
@@ -440,6 +500,19 @@ export default function AdminAtms() {
             </div>
             <div className="kpi-subtext">Delhi, Gurugram, Jaipur</div>
           </div>
+
+          <div className="kpi-card" style={{ '--kpi-accent': '#06b6d4' }}>
+            <div className="kpi-header">
+              <span className="kpi-label">Linked Sites</span>
+              <span className="kpi-icon">🔗</span>
+            </div>
+            <div className="kpi-value" style={{ color: '#0891b2' }}>
+              {stats.withLinks}
+            </div>
+            <div className="kpi-subtext">
+              {Math.round((stats.withLinks / (stats.total || 1)) * 100)}% with IR / Site Link
+            </div>
+          </div>
         </div>
 
         {/* Bulk Excel Upload Card (Collapsible) */}
@@ -515,6 +588,70 @@ export default function AdminAtms() {
                 {excelError}
               </p>
             )}
+
+            {/* Divider & Link Sync Tool */}
+            <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #bfdbfe' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+                <div>
+                  <h4 style={{ margin: '0 0 4px', fontSize: '0.98rem', color: '#0369a1' }}>
+                    🔗 Sync / Match ATM Links from Excel
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.84rem', color: '#475569' }}>
+                    Upload any sheet with <strong>ATMID</strong> and <strong>Link / Installation Reports</strong> columns to attach reference links.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <input
+                    ref={linkFileInputRef}
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={handleLinkFileSelect}
+                    style={{ fontSize: '0.85rem', width: 'auto' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleLinkUpload}
+                    disabled={!linkFile || uploadingLinks}
+                    style={{
+                      whiteSpace: 'nowrap',
+                      background: '#0284c7',
+                      color: '#ffffff',
+                      border: 'none',
+                    }}
+                  >
+                    {uploadingLinks ? 'Matching Links...' : '🔗 Match & Attach Links'}
+                  </button>
+                </div>
+              </div>
+
+              {linkFile && !uploadingLinks && !linkMsg && (
+                <div style={{ marginTop: 8, fontSize: '0.84rem', color: '#0369a1', fontWeight: 600 }}>
+                  Selected File: {linkFile.name} ({(linkFile.size / 1024).toFixed(1)} KB)
+                </div>
+              )}
+
+              {linkMsg && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: '8px 12px',
+                    background: 'white',
+                    border: '1px solid #7dd3fc',
+                    borderRadius: 'var(--radius-sm)',
+                    color: '#0369a1',
+                    fontSize: '0.88rem',
+                  }}
+                >
+                  ✓ {linkMsg.message} (Processed {linkMsg.totalRows} rows)
+                </div>
+              )}
+
+              {linkError && (
+                <p className="error" style={{ marginTop: 8, marginBottom: 0 }}>
+                  {linkError}
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -686,6 +823,7 @@ export default function AdminAtms() {
                   <th>Zone</th>
                   <th>State</th>
                   <th>Site Type</th>
+                  <th>IR Link</th>
                   <th>Address</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -748,6 +886,32 @@ export default function AdminAtms() {
                       </td>
                       <td>
                         {a.siteType ? <span className={`badge ${siteClass}`}>{a.siteType}</span> : '-'}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {a.link ? (
+                          <a
+                            href={a.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '4px 8px',
+                              borderRadius: 6,
+                              background: '#e0f2fe',
+                              color: '#0369a1',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              textDecoration: 'none',
+                            }}
+                            title={a.link}
+                          >
+                            🔗 View ↗
+                          </a>
+                        ) : (
+                          <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>-</span>
+                        )}
                       </td>
                       <td style={{ maxWidth: 210, fontSize: '0.8rem' }} title={a.address}>
                         <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--color-text-muted)' }}>
@@ -908,6 +1072,45 @@ export default function AdminAtms() {
                 </span>
                 <div style={{ color: '#475569', marginTop: 2 }}>{detailAtm.inchargeDesig || '-'}</div>
               </div>
+              {detailAtm.deviceId && (
+                <div>
+                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>
+                    Unit / Device ID
+                  </span>
+                  <code>{detailAtm.deviceId}</code>
+                </div>
+              )}
+              {(detailAtm.link || (detailAtm.links && detailAtm.links.length > 0)) && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', display: 'block' }}>
+                    Installation / Site Reference Link
+                  </span>
+                  <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {(detailAtm.links && detailAtm.links.length > 0 ? detailAtm.links : [detailAtm.link]).map((url, i) => (
+                      <a
+                        key={i}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '6px 14px',
+                          background: '#0284c7',
+                          color: '#ffffff',
+                          borderRadius: 6,
+                          fontWeight: 600,
+                          fontSize: '0.82rem',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        🔗 Open Site Link {detailAtm.links?.length > 1 ? `#${i + 1}` : ''} ↗
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ marginTop: 24, textAlign: 'right', borderTop: '1px solid var(--color-border)', paddingTop: 16 }}>
@@ -1037,6 +1240,22 @@ export default function AdminAtms() {
                   <input
                     value={editingAtm.address || ''}
                     onChange={(e) => setEditingAtm({ ...editingAtm, address: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label>Unit / Device ID</label>
+                  <input
+                    placeholder="e.g. PNSBP1A1001"
+                    value={editingAtm.deviceId || ''}
+                    onChange={(e) => setEditingAtm({ ...editingAtm, deviceId: e.target.value })}
+                  />
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label>Installation / Site Link</label>
+                  <input
+                    placeholder="https://..."
+                    value={editingAtm.link || ''}
+                    onChange={(e) => setEditingAtm({ ...editingAtm, link: e.target.value })}
                   />
                 </div>
               </div>

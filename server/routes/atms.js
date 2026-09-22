@@ -70,6 +70,8 @@ function parseSheetRows(rows, sheetName) {
     }
 
     const location = branchName || address || zone;
+    const link = getCol(r, ['INSTALLATIONREPORTLINK', 'INSTALLATIONREPORTS', 'INSTALLATIONREPORT', 'LINK', 'URL', 'IRLINK']);
+    const deviceId = getCol(r, ['DEVICEID', 'UNITID', 'PSBDEVICEID', 'IRUNITID']);
 
     parsed.push({
       slNo,
@@ -86,6 +88,8 @@ function parseSheetRows(rows, sheetName) {
       state,
       siteType,
       location,
+      link,
+      deviceId,
     });
   }
 
@@ -139,6 +143,9 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
       pincode,
       state,
       siteType,
+      link,
+      links,
+      deviceId,
     } = req.body;
 
     if (!atmId || !atmId.trim()) {
@@ -152,6 +159,13 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
     if (existing) {
       return res.status(409).json({ message: 'ATM ID already exists' });
     }
+
+    const cleanLink = link?.trim() || '';
+    const cleanLinks = Array.isArray(links)
+      ? links.map((l) => String(l).trim()).filter(Boolean)
+      : cleanLink
+      ? [cleanLink]
+      : [];
 
     const atm = await Atm.create({
       slNo: Number(slNo) || 0,
@@ -168,6 +182,9 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
       pincode: pincode?.trim() || '',
       state: state?.trim() || '',
       siteType: siteType?.trim() || '',
+      link: cleanLink || (cleanLinks[0] || ''),
+      links: cleanLinks,
+      deviceId: deviceId?.trim() || '',
     });
 
     const populated = await Atm.findById(atm._id).populate('area', 'id name');
@@ -239,6 +256,11 @@ router.post('/import-excel', requireAuth, requireRole('admin'), async (req, res)
         existingAtm.state = item.state;
         existingAtm.siteType = item.siteType;
         existingAtm.location = item.location;
+        if (item.link) {
+          existingAtm.link = item.link;
+          if (!existingAtm.links || existingAtm.links.length === 0) existingAtm.links = [item.link];
+        }
+        if (item.deviceId) existingAtm.deviceId = item.deviceId;
         await existingAtm.save();
         updated++;
       } else {
@@ -257,6 +279,9 @@ router.post('/import-excel', requireAuth, requireRole('admin'), async (req, res)
           state: item.state,
           siteType: item.siteType,
           location: item.location,
+          link: item.link || '',
+          links: item.link ? [item.link] : [],
+          deviceId: item.deviceId || '',
         });
         created++;
       }
@@ -272,6 +297,113 @@ router.post('/import-excel', requireAuth, requireRole('admin'), async (req, res)
   } catch (err) {
     console.error('Import Excel error:', err);
     res.status(500).json({ message: 'Error processing Excel file: ' + err.message });
+  }
+});
+
+// POST /api/atms/import-links - match ATM IDs from an Excel sheet and update link / links / deviceId
+router.post('/import-links', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const { fileBase64 } = req.body;
+    if (!fileBase64) {
+      return res.status(400).json({ message: 'No file data provided' });
+    }
+
+    const cleanBase64 = fileBase64.replace(/^data:.*?;base64,/, '');
+    const buffer = Buffer.from(cleanBase64, 'base64');
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+
+    const atmLinksMap = new Map();
+    const atmDeviceMap = new Map();
+
+    function registerLink(rawAtmId, link, deviceId) {
+      if (!rawAtmId || !link) return;
+      const cleanLink = String(link).trim();
+      if (!cleanLink.startsWith('http')) return;
+
+      const ids = String(rawAtmId)
+        .split(/[,_\/]/)
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => s.length >= 4);
+
+      for (const id of ids) {
+        if (!atmLinksMap.has(id)) atmLinksMap.set(id, []);
+        if (!atmLinksMap.get(id).includes(cleanLink)) {
+          atmLinksMap.get(id).push(cleanLink);
+        }
+        if (deviceId && !atmDeviceMap.has(id)) {
+          atmDeviceMap.set(id, String(deviceId).trim());
+        }
+      }
+    }
+
+    let totalRows = 0;
+    for (const sheetName of workbook.SheetNames) {
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+      totalRows += rows.length;
+
+      for (const row of rows) {
+        const atmIdVal =
+          row['ATMId'] ||
+          row['ATMID'] ||
+          row['ATM ID'] ||
+          row['IR_ATMId_Raw'] ||
+          row['PSB_ATM_IDs'] ||
+          row['ATM'] ||
+          row['Terminal ID'] ||
+          '';
+
+        const linkVal =
+          row['Installation_Report_Link'] ||
+          row['Installation Reports'] ||
+          row['Installation Report'] ||
+          row['IR Link'] ||
+          row['Link'] ||
+          row['URL'] ||
+          row['link'] ||
+          '';
+
+        const deviceIdVal = row['PSB_Device_ID'] || row['IR_Unit_ID'] || row['Unit ID'] || row['deviceId'] || '';
+
+        registerLink(atmIdVal, linkVal, deviceIdVal);
+      }
+    }
+
+    const atms = await Atm.find({});
+    let updatedCount = 0;
+
+    for (const atm of atms) {
+      const normAtmId = atm.atmId.trim().toUpperCase();
+      let matchedLinks = atmLinksMap.get(normAtmId) || [];
+      let matchedDeviceId = atmDeviceMap.get(normAtmId) || '';
+
+      if (matchedLinks.length === 0) {
+        for (const [key, links] of atmLinksMap.entries()) {
+          if (key.includes(normAtmId) || normAtmId.includes(key)) {
+            matchedLinks = links;
+            matchedDeviceId = atmDeviceMap.get(key) || '';
+            break;
+          }
+        }
+      }
+
+      if (matchedLinks.length > 0) {
+        atm.link = matchedLinks[0];
+        atm.links = matchedLinks;
+        if (matchedDeviceId) atm.deviceId = matchedDeviceId;
+        await atm.save();
+        updatedCount++;
+      }
+    }
+
+    res.json({
+      message: `Successfully linked ${updatedCount} ATM(s) from sheet`,
+      totalRows,
+      updatedCount,
+      totalAtmsInDb: atms.length,
+    });
+  } catch (err) {
+    console.error('Import Links error:', err);
+    res.status(500).json({ message: 'Error processing links sheet: ' + err.message });
   }
 });
 
@@ -327,6 +459,15 @@ router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
     if (pincode !== undefined) atm.pincode = pincode?.trim() || '';
     if (state !== undefined) atm.state = state?.trim() || '';
     if (siteType !== undefined) atm.siteType = siteType?.trim() || '';
+    if (link !== undefined) {
+      atm.link = link?.trim() || '';
+      if (!atm.links || atm.links.length === 0) atm.links = [atm.link];
+    }
+    if (links !== undefined && Array.isArray(links)) {
+      atm.links = links.map((l) => String(l).trim()).filter(Boolean);
+      if (atm.links.length > 0 && !atm.link) atm.link = atm.links[0];
+    }
+    if (deviceId !== undefined) atm.deviceId = deviceId?.trim() || '';
     await atm.save();
 
     const populated = await Atm.findById(atm._id).populate('area', 'id name');

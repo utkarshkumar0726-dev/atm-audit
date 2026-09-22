@@ -529,6 +529,63 @@ export default function AuditForm() {
                   </span>
                 )}
               </div>
+
+              {(selectedAtm.link || (selectedAtm.links && selectedAtm.links.length > 0)) && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    paddingTop: 10,
+                    borderTop: '1px dashed #cbd5e1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: '#0369a1', fontSize: '0.85rem' }}>
+                    🔗 Site / Installation Link:
+                  </span>
+                  {(selectedAtm.links && selectedAtm.links.length > 0 ? selectedAtm.links : [selectedAtm.link]).map(
+                    (url, idx) => (
+                      <a
+                        key={idx}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '6px 14px',
+                          background: '#0284c7',
+                          color: '#ffffff',
+                          borderRadius: 6,
+                          fontWeight: 600,
+                          fontSize: '0.82rem',
+                          textDecoration: 'none',
+                          boxShadow: '0 1px 3px rgba(2, 132, 199, 0.2)',
+                        }}
+                      >
+                        <span>🌐</span> Open Site / IR Link {selectedAtm.links?.length > 1 ? `#${idx + 1}` : ''} ↗
+                      </a>
+                    )
+                  )}
+                  {selectedAtm.deviceId && (
+                    <span
+                      style={{
+                        fontSize: '0.8rem',
+                        color: '#475569',
+                        background: '#e2e8f0',
+                        padding: '3px 8px',
+                        borderRadius: 4,
+                        fontWeight: 500,
+                      }}
+                    >
+                      Unit ID: <strong>{selectedAtm.deviceId}</strong>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -635,15 +692,56 @@ export default function AuditForm() {
       </Topbar>
 
       <div className="card wide">
-        <div className="audit-meta-row">
-          {photos[0] && <img src={photos[0]} alt="ATM" className="photo-thumb" />}
-          <div>
-            <h1 style={{ margin: 0 }}>ATM Audit Form</h1>
-            <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-              ATM ID: <strong>{selectedAtm.atmId}</strong> &middot; Area: <strong>{selectedAtm.area?.name}</strong>
-              {photos.length > 1 && <> &middot; {photos.length} photos attached</>}
-            </p>
+        <div
+          className="audit-meta-row"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            {photos[0] && <img src={photos[0]} alt="ATM" className="photo-thumb" />}
+            <div>
+              <h1 style={{ margin: 0 }}>ATM Audit Form</h1>
+              <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+                ATM ID: <strong>{selectedAtm.atmId}</strong> &middot; Area: <strong>{selectedAtm.area?.name}</strong>
+                {photos.length > 1 && <> &middot; {photos.length} photos attached</>}
+              </p>
+            </div>
           </div>
+
+          {(selectedAtm?.link || (selectedAtm?.links && selectedAtm.links.length > 0)) && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {(selectedAtm.links && selectedAtm.links.length > 0 ? selectedAtm.links : [selectedAtm.link]).map(
+                (url, idx) => (
+                  <a
+                    key={idx}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '8px 16px',
+                      background: '#0284c7',
+                      color: '#ffffff',
+                      borderRadius: 8,
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      textDecoration: 'none',
+                      boxShadow: '0 2px 4px rgba(2, 132, 199, 0.25)',
+                    }}
+                  >
+                    <span>🔗</span> Open Site Link {selectedAtm.links?.length > 1 ? `#${idx + 1}` : ''} ↗
+                  </a>
+                )
+              )}
+            </div>
+          )}
         </div>
 
         <div className="stage-tracker" style={{ marginTop: 20 }}>
