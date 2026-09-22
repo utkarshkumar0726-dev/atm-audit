@@ -1,24 +1,32 @@
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
 export default function Topbar({ children }) {
+  const { user } = useAuth();
+  const homeLink = user?.role === 'admin' ? '/admin' : '/auditor';
+
   return (
     <header className="topbar">
-      <div className="brand">
-        <img
-          src="/favicon.svg"
-          alt="ATMAudit360"
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)',
-          }}
-        />
-        <span className="brand-text">
-          <span className="brand-name">
-            ATMAudit<span style={{ color: 'var(--color-primary)' }}>360</span>
-          </span>
-          <span className="brand-tagline">e-Surveillance & Compliance</span>
-        </span>
-      </div>
+      <Link to={homeLink} className="brand-link">
+        <div className="brand">
+          <div className="brand-logo-wrapper">
+            <img
+              src="/favicon.svg"
+              alt="ATMAudit360 Logo"
+              className="brand-logo-img"
+            />
+          </div>
+          <div className="brand-text">
+            <span className="brand-name">
+              ATMAudit<span className="brand-accent">360</span>
+            </span>
+            <span className="brand-tagline">
+              <span className="live-dot" />
+              e-Surveillance & Compliance
+            </span>
+          </div>
+        </div>
+      </Link>
       <div className="topbar-actions">{children}</div>
     </header>
   );

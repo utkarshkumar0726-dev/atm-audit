@@ -70,34 +70,53 @@ p {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 28px;
-  background: var(--color-primary-dark);
+  padding: 12px 32px;
+  background: linear-gradient(135deg, #091124 0%, #0f172a 60%, #172554 100%);
   color: white;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 100;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+
+.brand-link:hover {
+  opacity: 0.92;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-.brand-mark {
+.brand-logo-wrapper {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background: var(--color-primary);
-  color: white;
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: -0.02em;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.brand-logo-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.brand-link:hover .brand-logo-img {
+  transform: scale(1.06) rotate(-2deg);
 }
 
 .brand-text {
@@ -107,87 +126,194 @@ p {
 }
 
 .brand-name {
-  font-weight: 700;
-  font-size: 1rem;
-  color: white;
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+}
+
+.brand-accent {
+  color: #38bdf8;
+  font-weight: 900;
+  text-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+  margin-left: 1px;
 }
 
 .brand-tagline {
-  font-size: 0.72rem;
-  color: #bcd0f7;
+  font-size: 0.7rem;
+  color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulseLive 2s infinite;
+}
+
+@keyframes pulseLive {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
 }
 
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 14px;
 }
 
 .user-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
+  gap: 10px;
+  padding: 5px 14px 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  backdrop-filter: blur(8px);
 }
 
 .role-badge {
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 3px 8px;
+  letter-spacing: 0.05em;
+  padding: 3px 9px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #dbeafe;
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.35), rgba(56, 189, 248, 0.25));
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.4);
 }
 
 .topbar .link {
-  color: #bcd0f7;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .topbar .link:hover {
+  background: #ef4444;
   color: white;
+  border-color: #ef4444;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
 }
 
-/* Admin sub-nav */
+/* Admin & Auditor sub-nav */
 
 .admin-nav {
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  padding: 10px 28px;
-  background: white;
-  border-bottom: 1px solid var(--color-border);
+  align-items: center;
+  padding: 8px 32px;
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
   position: sticky;
-  top: 62px;
-  z-index: 9;
+  top: 61px;
+  z-index: 90;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.admin-nav-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: 1300px;
 }
 
 .admin-nav-link {
-  padding: 7px 14px;
-  border-radius: 999px;
-  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9px;
+  font-size: 0.86rem;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: #64748b;
   text-decoration: none;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+}
+
+.admin-nav-link .nav-icon {
+  font-size: 0.95rem;
+  transition: transform 0.2s ease;
 }
 
 .admin-nav-link:hover {
-  background: #f1f5f9;
-  color: var(--color-text);
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.admin-nav-link:hover .nav-icon {
+  transform: scale(1.15);
 }
 
 .admin-nav-link.active {
-  background: var(--color-primary-soft);
-  color: var(--color-primary-dark);
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  font-weight: 700;
+  border-color: transparent;
+  box-shadow: 0 3px 10px rgba(2, 132, 199, 0.32);
 }
 
-@media (max-width: 480px) {
+.admin-nav-link.active .nav-icon {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    padding: 10px 16px;
+  }
+  .brand-tagline {
+    display: none;
+  }
   .admin-nav {
-    padding: 8px 12px;
-    top: 58px;
+    padding: 6px 12px;
+    top: 57px;
+  }
+  .admin-nav-link {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    gap: 5px;
   }
 }
 
