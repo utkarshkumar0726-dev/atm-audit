@@ -7,26 +7,41 @@ const { User } = require('../models');
 async function seedAdmin() {
   await connectDB();
 
-  const username = (process.env.ADMIN_USERNAME || 'admin').toLowerCase().trim();
-  const password = process.env.ADMIN_PASSWORD;
-  const name = process.env.ADMIN_NAME || 'Administrator';
+  const accounts = [
+    {
+      name: process.env.ADMIN_NAME || 'Administrator',
+      username: (process.env.ADMIN_USERNAME || 'admin').toLowerCase().trim(),
+      password: process.env.ADMIN_PASSWORD || 'admin',
+      role: 'admin',
+    },
+    {
+      name: 'Demo Admin',
+      username: 'demoadmin',
+      password: 'demo@1234',
+      role: 'admin',
+    },
+  ];
 
-  if (!password) {
-    console.error('ADMIN_PASSWORD is not set in .env');
-    process.exit(1);
+  for (const acc of accounts) {
+    const existing = await User.findOne({ username: acc.username });
+    if (existing) {
+      console.log(`Admin user "${acc.username}" already exists. Updating password & role...`);
+      existing.password = await bcrypt.hash(acc.password, 10);
+      existing.role = 'admin';
+      existing.name = acc.name;
+      await existing.save();
+    } else {
+      const hashed = await bcrypt.hash(acc.password, 10);
+      await User.create({
+        name: acc.name,
+        username: acc.username,
+        password: hashed,
+        role: 'admin',
+      });
+      console.log(`Admin user created: ${acc.username}`);
+    }
   }
 
-  const existing = await User.findOne({ username });
-  if (existing) {
-    console.log(`Admin user "${username}" already exists in MongoDB. Nothing to do.`);
-    await mongoose.connection.close();
-    process.exit(0);
-  }
-
-  const hashed = await bcrypt.hash(password, 10);
-  await User.create({ name, username, password: hashed, role: 'admin' });
-
-  console.log(`Admin user created in MongoDB: ${username}`);
   await mongoose.connection.close();
   process.exit(0);
 }
