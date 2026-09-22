@@ -87,6 +87,65 @@ router.put('/change-password', requireAuth, async (req, res) => {
   }
 });
 
+// PUT /api/auth/profile - logged-in user updates their profile details (name, username, and optional password)
+router.put('/profile', requireAuth, async (req, res) => {
+  try {
+    const { name, username, currentPassword, newPassword } = req.body;
+    if (!name || !username) {
+      return res.status(400).json({ message: 'Name and username are required' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const cleanUsername = username.toLowerCase().trim();
+    if (cleanUsername !== user.username) {
+      const existing = await User.findOne({ username: cleanUsername, _id: { $ne: user._id } });
+      if (existing) {
+        return res.status(409).json({ message: 'Username is already taken by another account' });
+      }
+      user.username = cleanUsername;
+    }
+
+    user.name = name.trim();
+
+    // If changing password as well
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: 'Current password is required to change password' });
+      }
+      if (newPassword.length < 4) {
+        return res.status(400).json({ message: 'New password must be at least 4 characters long' });
+      }
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
+      user.password = await bcrypt.hash(newPassword, 10);
+    }
+
+    await user.save();
+    const token = signToken(user);
+
+    res.json({
+      message: 'Account details updated successfully',
+      token,
+      user: {
+        id: user._id,
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error('Update profile error:', err);
+    res.status(500).json({ message: 'Server error updating profile' });
+  }
+});
+
 // POST /api/auth/auditors - admin creates a new auditor account
 router.post('/auditors', requireAuth, requireRole('admin'), async (req, res) => {
   try {
