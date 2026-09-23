@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import AuditForm from './pages/AuditForm';
 import AuditorDashboard from './pages/AuditorDashboard';
+import AuditorAudits from './pages/AuditorAudits';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminAuditDetail from './pages/AdminAuditDetail';
 import AdminAuditors from './pages/AdminAuditors';
@@ -29,7 +30,11 @@ export default function App() {
           />
           <Route
             path="/auditor/audits"
-            element={<Navigate to="/auditor" replace />}
+            element={
+              <ProtectedRoute role="auditor">
+                <AuditorAudits />
+              </ProtectedRoute>
+            }
           />
 
           <Route

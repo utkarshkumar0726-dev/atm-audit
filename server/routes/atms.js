@@ -1,6 +1,6 @@
 const express = require('express');
 const XLSX = require('xlsx');
-const { Atm, Area, Assignment } = require('../models');
+const { Atm, Area, Assignment, Audit } = require('../models');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
@@ -112,12 +112,37 @@ router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
 // GET /api/atms/mine - auditor views only the ATMs assigned to them
 router.get('/mine', requireAuth, requireRole('auditor'), async (req, res) => {
   try {
-    const assignments = await Assignment.find({ auditor: req.user.id })
-      .populate({
-        path: 'atm',
-        populate: { path: 'area', select: 'id name' },
+    const [assignments, audits] = await Promise.all([
+      Assignment.find({ auditor: req.user.id })
+        .populate({
+          path: 'atm',
+          populate: { path: 'area', select: 'id name' },
+        }),
+      Audit.find({ auditor: req.user.id }).select('atmId createdAt'),
+    ]);
+
+    const auditedMap = new Map();
+    audits.forEach((a) => {
+      if (a.atmId) {
+        auditedMap.set(String(a.atmId).trim().toLowerCase(), a.createdAt);
+      }
+    });
+
+    const atms = assignments
+      .map((a) => a.atm)
+      .filter(Boolean)
+      .map((atm) => {
+        const atmObj = atm.toObject ? atm.toObject() : { ...atm };
+        const key = String(atm.atmId || '').trim().toLowerCase();
+        atmObj.isAudited = auditedMap.has(key);
+        atmObj.lastAuditedAt = auditedMap.get(key) || null;
+        return atmObj;
       });
-    const atms = assignments.map((a) => a.atm).filter(Boolean);
+
+    if (req.query.pending === 'true') {
+      return res.json(atms.filter((a) => !a.isAudited));
+    }
+
     res.json(atms);
   } catch (err) {
     console.error('Fetch my ATMs error:', err);

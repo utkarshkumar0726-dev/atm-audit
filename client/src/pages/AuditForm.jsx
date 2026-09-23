@@ -423,14 +423,27 @@ export default function AuditForm() {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <button
-              onClick={() => navigate('/auditor')}
+              onClick={() => navigate('/auditor/audits')}
               style={{
                 padding: '10px 18px',
                 fontWeight: 600,
                 borderRadius: 8,
               }}
             >
-              📋 View My Submitted Audits
+              📋 View Submitted Audits
+            </button>
+            <button
+              onClick={() => navigate('/auditor')}
+              style={{
+                padding: '10px 18px',
+                fontWeight: 600,
+                borderRadius: 8,
+                background: '#f1f5f9',
+                color: '#334155',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              📍 Back to Assigned ATMs
             </button>
             <button
               onClick={startNewAudit}
@@ -438,8 +451,8 @@ export default function AuditForm() {
                 padding: '10px 18px',
                 fontWeight: 600,
                 borderRadius: 8,
-                background: '#f1f5f9',
-                color: '#334155',
+                background: '#ffffff',
+                color: 'var(--color-primary)',
                 border: '1px solid var(--color-border)',
               }}
             >

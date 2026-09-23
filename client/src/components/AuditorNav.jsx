@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom';
 
 const LINKS = [
-  { to: '/auditor', label: 'My Submitted Audits', icon: '📋', end: true },
+  { to: '/auditor', label: 'Assigned ATMs', icon: '📍', end: true },
+  { to: '/auditor/audits', label: 'Submitted Audits', icon: '📋' },
   { to: '/audit/new', label: 'Start New Audit', icon: '➕' },
 ];
 
