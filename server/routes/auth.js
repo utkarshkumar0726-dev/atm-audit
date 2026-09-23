@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User } = require('../models');
+const { User, Assignment } = require('../models');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
@@ -263,6 +263,27 @@ router.put('/auditors/:id', requireAuth, requireRole('admin'), async (req, res) 
   } catch (err) {
     console.error('Update auditor error:', err);
     res.status(500).json({ message: 'Server error updating auditor' });
+  }
+});
+
+// DELETE /api/auth/auditors/:id - admin deletes an auditor
+router.delete('/auditors/:id', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const auditor = await User.findOne({ _id: req.params.id, role: 'auditor' });
+    if (!auditor) {
+      return res.status(404).json({ message: 'Auditor not found' });
+    }
+
+    // Clean up active assignments for this auditor so ATMs are released
+    await Assignment.deleteMany({ auditor: auditor._id });
+
+    // Delete the auditor user
+    await User.deleteOne({ _id: auditor._id });
+
+    res.json({ message: `Auditor "${auditor.name}" (@${auditor.username}) deleted successfully` });
+  } catch (err) {
+    console.error('Delete auditor error:', err);
+    res.status(500).json({ message: 'Server error deleting auditor' });
   }
 });
 

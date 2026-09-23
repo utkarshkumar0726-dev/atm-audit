@@ -95,6 +95,23 @@ export default function AdminAuditors() {
     }
   }
 
+  const [deletingId, setDeletingId] = useState(null);
+
+  async function handleDelete(auditor) {
+    const confirmMsg = `Are you sure you want to delete auditor "${auditor.name}" (@${auditor.username})?\n\nThis will permanently delete their account and release any active ATM assignments.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setDeletingId(auditor._id);
+    try {
+      await api.delete(`/auth/auditors/${auditor._id}`);
+      loadAuditors();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete auditor');
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <div className="page">
       <Topbar>
@@ -253,9 +270,24 @@ export default function AdminAuditors() {
                     <td style={{ color: '#64748b', fontSize: '0.85rem' }}>
                       {new Date(a.createdAt).toLocaleDateString()}
                     </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button type="button" className="link" onClick={() => startEdit(a)}>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button
+                        type="button"
+                        className="link"
+                        onClick={() => startEdit(a)}
+                        style={{ marginRight: 12 }}
+                      >
                         Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="link"
+                        onClick={() => handleDelete(a)}
+                        disabled={deletingId === a._id}
+                        style={{ color: '#ef4444', fontWeight: 500 }}
+                        title={`Delete auditor ${a.name}`}
+                      >
+                        {deletingId === a._id ? 'Deleting...' : 'Delete'}
                       </button>
                     </td>
                   </tr>
