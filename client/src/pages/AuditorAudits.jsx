@@ -65,22 +65,44 @@ export default function AuditorAudits() {
     setDetailError('');
   }
 
+  const [zoneFilter, setZoneFilter] = useState('all');
+
+  // Unique zones / areas with count for filter dropdown & chips
+  const uniqueZones = useMemo(() => {
+    const map = new Map();
+    audits.forEach((a) => {
+      const z = a.area || 'General';
+      map.set(z, (map.get(z) || 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [audits]);
+
   const filteredAudits = useMemo(() => {
+    let list = audits;
+
+    if (zoneFilter !== 'all') {
+      list = list.filter((a) => (a.area || 'General') === zoneFilter);
+    }
+
     const q = search.trim().toLowerCase();
-    if (!q) return audits;
-    return audits.filter(
-      (a) =>
-        a.atmId?.toLowerCase().includes(q) ||
-        a.area?.toLowerCase().includes(q)
-    );
-  }, [audits, search]);
+    if (q) {
+      list = list.filter(
+        (a) =>
+          a.atmId?.toLowerCase().includes(q) ||
+          a.area?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [audits, zoneFilter, search]);
 
   const stats = useMemo(() => {
     const totalSubmitted = audits.length;
     const totalPhotos = audits.reduce((sum, a) => sum + (a.photos?.length || 0), 0);
-    const uniqueZones = new Set(audits.map((a) => a.area).filter(Boolean)).size;
-    return { totalSubmitted, totalPhotos, uniqueZones };
-  }, [audits]);
+    const uniqueZonesCount = uniqueZones.length;
+    return { totalSubmitted, totalPhotos, uniqueZones: uniqueZonesCount };
+  }, [audits, uniqueZones]);
 
   return (
     <div className="page">
@@ -217,8 +239,17 @@ export default function AuditorAudits() {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div style={{ marginBottom: 20 }}>
+        {/* Search & Zone Filter Bar */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginBottom: uniqueZones.length > 1 ? 12 : 20,
+          }}
+        >
           <input
             type="text"
             placeholder="🔍 Search submitted audits by ATM ID or Area..."
@@ -233,7 +264,114 @@ export default function AuditorAudits() {
               fontSize: '0.95rem',
             }}
           />
+
+          {uniqueZones.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>📍 Zone/Area:</span>
+              <select
+                value={zoneFilter}
+                onChange={(e) => setZoneFilter(e.target.value)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 8,
+                  border: zoneFilter !== 'all' ? '1.5px solid #7c3aed' : '1px solid var(--color-border)',
+                  fontSize: '0.86rem',
+                  background: zoneFilter !== 'all' ? '#f5f3ff' : '#ffffff',
+                  color: zoneFilter !== 'all' ? '#6d28d9' : '#1e293b',
+                  fontWeight: zoneFilter !== 'all' ? 700 : 400,
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="all">All Zones ({audits.length})</option>
+                {uniqueZones.map((z) => (
+                  <option key={z.name} value={z.name}>
+                    {z.name} ({z.count})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
+
+        {/* Quick Zone / Area Filter Chips */}
+        {uniqueZones.length > 1 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 8,
+              marginBottom: 20,
+              padding: '10px 14px',
+              background: '#f8fafc',
+              borderRadius: 10,
+              border: '1px solid #e2e8f0',
+            }}
+          >
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span>📍</span> Zone Filter:
+            </span>
+            <button
+              type="button"
+              onClick={() => setZoneFilter('all')}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 20,
+                fontSize: '0.8rem',
+                fontWeight: zoneFilter === 'all' ? 700 : 500,
+                background: zoneFilter === 'all' ? '#2563eb' : '#ffffff',
+                color: zoneFilter === 'all' ? '#ffffff' : '#475569',
+                border: zoneFilter === 'all' ? '1px solid #1d4ed8' : '1px solid #cbd5e1',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              All ({audits.length})
+            </button>
+            {uniqueZones.map((z) => {
+              const isSelected = zoneFilter === z.name;
+              return (
+                <button
+                  key={z.name}
+                  type="button"
+                  onClick={() => setZoneFilter(isSelected ? 'all' : z.name)}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 20,
+                    fontSize: '0.8rem',
+                    fontWeight: isSelected ? 700 : 500,
+                    background: isSelected ? '#7c3aed' : '#ffffff',
+                    color: isSelected ? '#ffffff' : '#475569',
+                    border: isSelected ? '1px solid #6d28d9' : '1px solid #cbd5e1',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isSelected ? '0 1px 3px rgba(124, 58, 237, 0.25)' : 'none',
+                  }}
+                >
+                  {z.name} ({z.count})
+                </button>
+              );
+            })}
+            {zoneFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setZoneFilter('all')}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  fontSize: '0.75rem',
+                  color: '#dc2626',
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  cursor: 'pointer',
+                  marginLeft: 4,
+                }}
+              >
+                ✕ Reset
+              </button>
+            )}
+          </div>
+        )}
 
         {loading && (
           <p style={{ color: 'var(--color-text-muted)', padding: '24px 0' }}>
