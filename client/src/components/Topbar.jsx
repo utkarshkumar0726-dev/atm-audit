@@ -138,7 +138,7 @@ export default function Topbar({ children }) {
           <div
             className="modal"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: 480, padding: 26, borderRadius: 16, maxHeight: '90vh', overflowY: 'auto' }}
+            style={{ maxWidth: 480 }}
           >
             <div
               style={{
@@ -245,7 +245,7 @@ export default function Topbar({ children }) {
                     </small>
                   </label>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="form-grid-2col">
                     <label style={{ margin: 0 }}>
                       <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>
                         Email ID

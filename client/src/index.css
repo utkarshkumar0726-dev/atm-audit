@@ -22,12 +22,25 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
   background: var(--color-bg);
   color: var(--color-text);
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
 }
 
 h1 {
@@ -1264,4 +1277,381 @@ select:focus {
     transform: scale(1) translateY(0);
   }
 }
+
+/* ==========================================================================
+   RESPONSIVE UTILITIES & SYSTEM
+   ========================================================================== */
+
+.atm-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 16px;
+}
+
+.form-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.scroll-row {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  gap: 6px;
+  padding-bottom: 4px;
+}
+
+.scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: #ffffff;
+  margin-top: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+/* ==========================================================================
+   RESPONSIVE OVERHAUL (TABLETS & MOBILE <= 768px)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* Topbar */
+  .topbar {
+    padding: 9px 12px !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .brand {
+    gap: 8px !important;
+  }
+
+  .brand-logo-img {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 8px !important;
+  }
+
+  .brand-name {
+    font-size: 1.02rem !important;
+  }
+
+  .brand-tagline {
+    display: none !important;
+  }
+
+  .topbar-actions {
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .user-chip {
+    padding: 3px 8px !important;
+    font-size: 0.78rem !important;
+    gap: 5px !important;
+  }
+
+  .user-chip .user-chip-name {
+    max-width: 75px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .role-badge {
+    font-size: 0.62rem !important;
+    padding: 2px 6px !important;
+  }
+
+  .topbar-btn-security {
+    padding: 5px 8px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .topbar-btn-security .btn-text {
+    display: none !important;
+  }
+
+  .topbar .link {
+    padding: 5px 10px !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Sub-Navigation (Smooth Horizontal Ribbon) */
+  .admin-nav {
+    padding: 6px 10px !important;
+    top: 50px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    white-space: nowrap !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+  }
+
+  .admin-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .admin-nav-container {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+    width: max-content !important;
+    padding-right: 12px !important;
+  }
+
+  .admin-nav-link {
+    padding: 6px 11px !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    gap: 5px !important;
+    border-radius: 7px !important;
+  }
+
+  .admin-nav-link .nav-icon {
+    font-size: 0.9rem !important;
+  }
+
+  /* Card Layouts */
+  .card.wide {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 8px 0 !important;
+    padding: 16px 14px !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  .card {
+    padding: 20px 16px !important;
+    max-width: 100% !important;
+  }
+
+  /* KPI Cards Grid */
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .kpi-card {
+    padding: 12px 14px !important;
+  }
+
+  .kpi-value {
+    font-size: 1.45rem !important;
+  }
+
+  .kpi-label {
+    font-size: 0.72rem !important;
+  }
+
+  /* Search & Filter Bars */
+  .filter-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+
+  .search-input-wrapper {
+    min-width: 100% !important;
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  .search-input-wrapper input {
+    width: 100% !important;
+    font-size: 0.88rem !important;
+  }
+
+  .filter-select {
+    width: 100% !important;
+    min-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Tables & Horizontal Scroll Container */
+  table,
+  .modern-table {
+    min-width: 580px !important;
+  }
+
+  th,
+  td,
+  .modern-table thead th,
+  .modern-table tbody td {
+    padding: 9px 10px !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* Forms & Inputs */
+  .inline-form {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 12px 10px !important;
+  }
+
+  .inline-form input,
+  .inline-form select {
+    width: 100% !important;
+    min-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .inline-form button {
+    width: 100% !important;
+  }
+
+  .form-grid-2col {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Audit Form Controls */
+  .stage-tracker {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
+    gap: 5px !important;
+    padding-bottom: 6px !important;
+  }
+
+  .stage-tracker::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .stage-pill {
+    flex-shrink: 0 !important;
+    padding: 6px 12px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .question {
+    padding: 14px 0 !important;
+  }
+
+  .yes-no {
+    gap: 20px !important;
+  }
+
+  .photo-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .photo-grid-view {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* Modals */
+  .modal-backdrop {
+    padding: 8px !important;
+  }
+
+  .modal {
+    padding: 16px 14px !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    border-radius: 14px !important;
+    max-height: 94vh !important;
+  }
+
+  /* ATM Cards Grid */
+  .atm-cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  /* Lightbox */
+  .lightbox-overlay {
+    padding: 12px !important;
+  }
+
+  .lightbox-close {
+    top: 10px !important;
+    right: 12px !important;
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .lightbox-actions {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+
+  .lightbox-actions button {
+    width: 100% !important;
+  }
+}
+
+/* ==========================================================================
+   EXTRA MOBILE OVERHAUL (SMARTPHONES <= 480px)
+   ========================================================================== */
+
+@media (max-width: 480px) {
+  .topbar {
+    padding: 8px 10px !important;
+  }
+
+  .card.wide {
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding: 14px 10px !important;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .atm-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  h1 {
+    font-size: 1.35rem !important;
+    margin-bottom: 12px !important;
+  }
+
+  h2 {
+    font-size: 1rem !important;
+  }
+
+  .actions {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .actions button {
+    width: 100% !important;
+  }
+
+  .camera-modal {
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .camera-video {
+    max-height: 50vh !important;
+  }
+}
+
 

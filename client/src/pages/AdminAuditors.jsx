@@ -116,7 +116,7 @@ export default function AdminAuditors() {
     <div className="page">
       <Topbar>
         <span className="user-chip">
-          {user?.name} <span className="role-badge">Admin</span>
+          <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Admin</span>
         </span>
         <button className="link" onClick={logout}>
           Logout
@@ -178,7 +178,8 @@ export default function AdminAuditors() {
         {auditors.length === 0 ? (
           <p className="empty-state">No auditors added yet.</p>
         ) : (
-          <table>
+          <div className="table-responsive">
+            <table>
             <thead>
               <tr>
                 <th>Name</th>
@@ -295,6 +296,7 @@ export default function AdminAuditors() {
               )}
             </tbody>
           </table>
+        </div>
         )}
       </div>
     </div>

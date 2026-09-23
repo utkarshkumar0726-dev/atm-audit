@@ -23,7 +23,7 @@ export default function AdminDashboard() {
     <div className="page">
       <Topbar>
         <span className="user-chip">
-          {user?.name} <span className="role-badge">Admin</span>
+          <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Admin</span>
         </span>
         <button className="link" onClick={logout}>
           Logout
@@ -39,30 +39,32 @@ export default function AdminDashboard() {
         {!loading && audits.length === 0 && <p className="empty-state">No audits submitted yet.</p>}
 
         {audits.length > 0 && (
-          <table>
-            <thead>
-              <tr>
-                <th>ATM ID</th>
-                <th>Area</th>
-                <th>Auditor</th>
-                <th>Submitted At</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {audits.map((audit) => (
-                <tr key={audit._id}>
-                  <td>{audit.atmId}</td>
-                  <td>{audit.area}</td>
-                  <td>{audit.auditor?.name}</td>
-                  <td>{new Date(audit.createdAt).toLocaleString()}</td>
-                  <td>
-                    <Link to={`/admin/audits/${audit._id}`}>View</Link>
-                  </td>
+          <div className="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>ATM ID</th>
+                  <th>Area</th>
+                  <th>Auditor</th>
+                  <th>Submitted At</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {audits.map((audit) => (
+                  <tr key={audit._id}>
+                    <td>{audit.atmId}</td>
+                    <td>{audit.area}</td>
+                    <td>{audit.auditor?.name}</td>
+                    <td>{new Date(audit.createdAt).toLocaleString()}</td>
+                    <td>
+                      <Link to={`/admin/audits/${audit._id}`}>View</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

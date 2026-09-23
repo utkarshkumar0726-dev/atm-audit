@@ -635,7 +635,7 @@ export default function AuditorDashboard() {
     <div className="page">
       <Topbar>
         <span className="user-chip">
-          {user?.name} <span className="role-badge">Auditor</span>
+          <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Auditor</span>
         </span>
         <button className="link" onClick={logout}>
           Logout
@@ -700,14 +700,7 @@ export default function AuditorDashboard() {
         </div>
 
         {/* KPI Cards */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: 16,
-            marginBottom: 24,
-          }}
-        >
+        <div className="kpi-grid">
           <div
             onClick={() => setStatusFilter('all')}
             style={{
@@ -1394,12 +1387,11 @@ export default function AuditorDashboard() {
 
                     {/* ATM Cards for this Area */}
                     <div
+                      className="atm-cards-grid"
                       style={{
-                        padding: 16,
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
-                        gap: 16,
+                        padding: 14,
                         background: '#fafbfc',
+                        borderRadius: '0 0 12px 12px',
                       }}
                     >
                       {group.atms.map(renderAtmCard)}
@@ -1409,13 +1401,7 @@ export default function AuditorDashboard() {
               </div>
             ) : (
               /* Flat Grid View */
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
-                  gap: 16,
-                }}
-              >
+              <div className="atm-cards-grid">
                 {filteredAtms.map(renderAtmCard)}
               </div>
             )}
@@ -1428,34 +1414,11 @@ export default function AuditorDashboard() {
         <div
           className="modal-backdrop"
           onClick={closeAuditDetail}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: 16,
-          }}
         >
           <div
             className="modal"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'relative',
-              background: '#ffffff',
-              borderRadius: 16,
-              maxWidth: 720,
-              width: '100%',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: 24,
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-              margin: 'auto',
-            }}
+            style={{ maxWidth: 720 }}
           >
             <div
               style={{

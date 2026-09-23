@@ -314,7 +314,7 @@ export default function AuditorAudits() {
 
   function renderAuditsTable(list) {
     return (
-      <div style={{ overflowX: 'auto' }}>
+      <div className="table-responsive">
         <table>
           <thead>
             <tr>
@@ -436,7 +436,7 @@ export default function AuditorAudits() {
     <div className="page">
       <Topbar>
         <span className="user-chip">
-          {user?.name} <span className="role-badge">Auditor</span>
+          <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Auditor</span>
         </span>
         <button className="link" onClick={logout}>
           Logout
@@ -464,7 +464,7 @@ export default function AuditorAudits() {
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button
               onClick={() => navigate('/auditor')}
               style={{
@@ -501,14 +501,7 @@ export default function AuditorAudits() {
         </div>
 
         {/* KPI Cards */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: 16,
-            marginBottom: 24,
-          }}
-        >
+        <div className="kpi-grid">
           <div
             style={{
               padding: '16px 20px',
@@ -1024,34 +1017,11 @@ export default function AuditorAudits() {
         <div
           className="modal-backdrop"
           onClick={closeAuditDetail}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: 16,
-          }}
         >
           <div
             className="modal"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'relative',
-              background: '#ffffff',
-              borderRadius: 16,
-              maxWidth: 720,
-              width: '100%',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: 24,
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-              margin: 'auto',
-            }}
+            style={{ maxWidth: 720 }}
           >
             <div
               style={{

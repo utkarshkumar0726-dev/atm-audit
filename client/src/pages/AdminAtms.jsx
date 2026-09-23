@@ -375,7 +375,7 @@ export default function AdminAtms() {
     <div className="page">
       <Topbar>
         <span className="user-chip">
-          {user?.name} <span className="role-badge">Admin</span>
+          <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Admin</span>
         </span>
         <button className="link" onClick={logout}>
           Logout

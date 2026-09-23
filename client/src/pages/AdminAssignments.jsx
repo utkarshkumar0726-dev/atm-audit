@@ -404,7 +404,7 @@ export default function AdminAssignments() {
     <div className="page">
       <Topbar>
         <span className="user-chip">
-          {user?.name} <span className="role-badge">Admin</span>
+          <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Admin</span>
         </span>
         <button className="link" onClick={logout}>
           Logout
@@ -511,14 +511,7 @@ export default function AdminAssignments() {
         </div>
 
         {/* KPI Cards */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-            gap: 14,
-            marginBottom: 24,
-          }}
-        >
+        <div className="kpi-grid">
           <div
             style={{
               padding: '16px 20px',
@@ -827,7 +820,7 @@ export default function AdminAssignments() {
         )}
 
         {!loading && filteredAtms.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-responsive">
             <table>
               <thead>
                 <tr>

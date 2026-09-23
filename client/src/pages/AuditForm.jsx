@@ -715,7 +715,7 @@ export default function AuditForm() {
     <div className="page">
       <Topbar>
         <span className="user-chip">
-          {user?.name} <span className="role-badge">Auditor</span>
+          <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Auditor</span>
         </span>
         <button className="link" onClick={logout}>
           Logout
@@ -733,7 +733,7 @@ export default function AuditForm() {
             gap: 12,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             {photos[0] && <img src={photos[0]} alt="ATM" className="photo-thumb" />}
             <div>
               <h1 style={{ margin: 0 }}>ATM Audit Form</h1>

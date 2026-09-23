@@ -110,7 +110,7 @@ export default function AdminChecklist() {
     <div className="page">
       <Topbar>
         <span className="user-chip">
-          {user?.name} <span className="role-badge">Admin</span>
+          <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Admin</span>
         </span>
         <button className="link" onClick={logout}>
           Logout
@@ -140,7 +140,7 @@ export default function AdminChecklist() {
 
         {stages.map((stage) => (
           <div key={stage._id} className="stage-block">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               {editingStageId === stage._id ? (
                 <div className="inline-form" style={{ margin: 0, background: 'transparent', border: 'none', padding: 0, flex: 1 }}>
                   <input value={editStageName} onChange={(e) => setEditStageName(e.target.value)} />

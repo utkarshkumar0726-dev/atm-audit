@@ -80,7 +80,7 @@ export default function AdminAreas() {
     <div className="page">
       <Topbar>
         <span className="user-chip">
-          {user?.name} <span className="role-badge">Admin</span>
+          <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Admin</span>
         </span>
         <button className="link" onClick={logout}>
           Logout
@@ -102,46 +102,48 @@ export default function AdminAreas() {
         {areas.length === 0 ? (
           <p className="empty-state">No areas added yet.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {areas.map((a) =>
-                editingId === a._id ? (
-                  <tr key={a._id}>
-                    <td colSpan={2}>
-                      <div className="inline-form" style={{ margin: 0, background: 'transparent', border: 'none', padding: 0 }}>
-                        <input value={editName} onChange={(e) => setEditName(e.target.value)} />
-                        <button type="button" onClick={() => saveEdit(a._id)} disabled={savingEdit}>
-                          {savingEdit ? 'Saving...' : 'Save'}
+          <div className="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {areas.map((a) =>
+                  editingId === a._id ? (
+                    <tr key={a._id}>
+                      <td colSpan={2}>
+                        <div className="inline-form" style={{ margin: 0, background: 'transparent', border: 'none', padding: 0 }}>
+                          <input value={editName} onChange={(e) => setEditName(e.target.value)} />
+                          <button type="button" onClick={() => saveEdit(a._id)} disabled={savingEdit}>
+                            {savingEdit ? 'Saving...' : 'Save'}
+                          </button>
+                          <button type="button" className="btn-secondary" onClick={cancelEdit}>
+                            Cancel
+                          </button>
+                        </div>
+                        {editError && <p className="error" style={{ marginTop: 10 }}>{editError}</p>}
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={a._id}>
+                      <td>{a.name}</td>
+                      <td>
+                        <button type="button" className="link" onClick={() => startEdit(a)} style={{ marginRight: 16 }}>
+                          Edit
                         </button>
-                        <button type="button" className="btn-secondary" onClick={cancelEdit}>
-                          Cancel
+                        <button type="button" className="link" onClick={() => deleteArea(a._id)}>
+                          Delete
                         </button>
-                      </div>
-                      {editError && <p className="error" style={{ marginTop: 10 }}>{editError}</p>}
-                    </td>
-                  </tr>
-                ) : (
-                  <tr key={a._id}>
-                    <td>{a.name}</td>
-                    <td>
-                      <button type="button" className="link" onClick={() => startEdit(a)} style={{ marginRight: 16 }}>
-                        Edit
-                      </button>
-                      <button type="button" className="link" onClick={() => deleteArea(a._id)}>
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
