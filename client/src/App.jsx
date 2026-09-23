@@ -29,6 +29,14 @@ export default function App() {
             }
           />
           <Route
+            path="/auditor/assigned"
+            element={
+              <ProtectedRoute role="auditor">
+                <AuditorDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/auditor/audits"
             element={
               <ProtectedRoute role="auditor">
