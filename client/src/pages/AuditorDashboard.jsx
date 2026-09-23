@@ -6,6 +6,123 @@ import Topbar from '../components/Topbar';
 import AuditorNav from '../components/AuditorNav';
 import PhotoLightbox from '../components/PhotoLightbox';
 
+// Normalization function to handle spelling variants common in Delhi / Indian addresses
+function normalizeLocalityQuery(str) {
+  return (str || '')
+    .toLowerCase()
+    .replace(/rajender/g, 'rajendra')
+    .replace(/palace/g, 'place')
+    .replace(/karolbagh/g, 'karol bagh')
+    .replace(/janak\s*puri/g, 'janakpuri')
+    .replace(/tilak\s*nagar/g, 'tilak nagar')
+    .replace(/patel\s*nagar/g, 'patel nagar')
+    .replace(/rajouri\s*garden/g, 'rajouri garden')
+    .replace(/connaught\s*place|cannaught|c\.?p\.?/g, 'connaught place')
+    .replace(/chandni\s*chawk/g, 'chandni chowk')
+    .replace(/kashmiri\s*gate/g, 'kashmere gate')
+    .replace(/shalimar\s*bagh/g, 'shalimar bagh')
+    .replace(/punjabi\s*bagh/g, 'punjabi bagh')
+    .replace(/rani\s*bagh/g, 'rani bagh')
+    .replace(/meera\s*bagh/g, 'meera bagh')
+    .replace(/pahar\s*ganj/g, 'pahar ganj')
+    .replace(/moti\s*nagar/g, 'moti nagar')
+    .replace(/green\s*park/g, 'green park')
+    .replace(/nehru\s*place/g, 'nehru place')
+    .replace(/safdarjung/g, 'safdarjung')
+    .replace(/gurgaon/g, 'gurugram')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Proximity & adjacent localities mapping for Delhi/NCR clusters
+const DELHI_LOCALITY_PROXIMITY = {
+  'karol bagh': {
+    targetArea: 'DELHI-II',
+    adjacentKeywords: ['rajendra place', 'patel nagar', 'pahar ganj', 'd.b.gupta', 'chandni chowk'],
+    title: 'Karol Bagh & Central/West Delhi',
+  },
+  'rajender place': {
+    targetArea: 'DELHI-II',
+    adjacentKeywords: ['rajendra place', 'patel nagar', 'pahar ganj', 'karol bagh', 'tilak nagar'],
+    title: 'Rajendra Place & Adjacent Areas',
+  },
+  'rajendra place': {
+    targetArea: 'DELHI-II',
+    adjacentKeywords: ['rajendra place', 'patel nagar', 'pahar ganj', 'karol bagh', 'tilak nagar'],
+    title: 'Rajendra Place & Adjacent Areas',
+  },
+  'janakpuri': {
+    targetArea: 'DELHI-II',
+    adjacentKeywords: ['janakpuri', 'tilak nagar', 'mayapuri', 'vikaspuri', 'uttam nagar', 'dera santpura'],
+    title: 'Janakpuri & West Delhi',
+  },
+  'rajouri garden': {
+    targetArea: 'DELHI-II',
+    adjacentKeywords: ['rajouri garden', 'tilak nagar', 'mayapuri', 'punjabi bagh', 'tagore garden', 'subhash nagar', 'west patel nagar'],
+    title: 'Rajouri Garden & West Delhi',
+  },
+  'patel nagar': {
+    targetArea: 'DELHI-II',
+    adjacentKeywords: ['west patel nagar', 'rajendra place', 'pahar ganj', 'karol bagh'],
+    title: 'Patel Nagar & Central/West Delhi',
+  },
+  'tilak nagar': {
+    targetArea: 'DELHI-II',
+    adjacentKeywords: ['tilak nagar', 'janakpuri', 'rajouri garden', 'mayapuri'],
+    title: 'Tilak Nagar & West Delhi',
+  },
+  'chandni chowk': {
+    targetArea: 'DELHI-II',
+    adjacentKeywords: ['chandni chowk', 'fatehpuri', 'kashmere gate', 'asaf ali road'],
+    title: 'Chandni Chowk & Old Delhi',
+  },
+  'connaught place': {
+    targetArea: 'DELHI-I',
+    adjacentKeywords: ['h block', 'connaught place', 'pahar ganj', 'ibd'],
+    title: 'Connaught Place & Central Delhi',
+  },
+  'green park': {
+    targetArea: 'DELHI-I',
+    adjacentKeywords: ['green park', 'safdarjung', 'defence colony', 'hauz khas'],
+    title: 'Green Park & South Delhi',
+  },
+  'mayapuri': {
+    targetArea: 'DELHI-II',
+    adjacentKeywords: ['mayapuri', 'naraina', 'rajouri garden', 'janakpuri'],
+    title: 'Mayapuri & Naraina Area',
+  },
+  'punjabi bagh': {
+    targetArea: 'DELHI-II',
+    adjacentKeywords: ['punjabi bagh', 'rajouri garden', 'west patel nagar', 'peera garhi'],
+    title: 'Punjabi Bagh & West Delhi',
+  },
+  'defence colony': {
+    targetArea: 'DELHI-I',
+    adjacentKeywords: ['defence colony', 'jangpura', 'green park', 'safdarjung'],
+    title: 'Defence Colony & South Delhi',
+  },
+  'nehru place': {
+    targetArea: 'DELHI-I',
+    adjacentKeywords: ['nehru place', 'sarita vihar', 'okhla', 'hemkunt colony'],
+    title: 'Nehru Place & South East Delhi',
+  },
+};
+
+const POPULAR_LOCALITIES = [
+  'Rajendra Place',
+  'Karol Bagh',
+  'Janakpuri',
+  'Rajouri Garden',
+  'Patel Nagar',
+  'Tilak Nagar',
+  'Connaught Place',
+  'Chandni Chowk',
+  'Green Park',
+  'Mayapuri',
+  'Punjabi Bagh',
+];
+
 export default function AuditorDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -20,6 +137,7 @@ export default function AuditorDashboard() {
   const [vendorFilter, setVendorFilter] = useState('all');
   const [zoneFilter, setZoneFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [searchScopeTab, setSearchScopeTab] = useState('all'); // 'all' | 'direct' | 'nearby'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'area'
 
   // Audit report modal (for audited ATMs)
@@ -97,8 +215,8 @@ export default function AuditorDashboard() {
     return { pendingAtms: pending, auditedAtms: audited };
   }, [assignedAtms, auditedAtmIds]);
 
-  // Filtered ATMs based on statusFilter, vendorFilter, zoneFilter, search
-  const filteredAtms = useMemo(() => {
+  // Smart locality & proximity search calculation
+  const searchResults = useMemo(() => {
     let list = assignedAtms;
 
     if (statusFilter === 'pending') {
@@ -115,21 +233,102 @@ export default function AuditorDashboard() {
       list = list.filter((a) => (a.area?.name || a.zone || 'General') === zoneFilter);
     }
 
-    const q = search.trim().toLowerCase();
-    if (q) {
-      list = list.filter(
-        (a) =>
-          a.atmId?.toLowerCase().includes(q) ||
-          a.branchName?.toLowerCase().includes(q) ||
-          a.vendor?.toLowerCase().includes(q) ||
-          a.address?.toLowerCase().includes(q) ||
-          a.zone?.toLowerCase().includes(q) ||
-          a.area?.name?.toLowerCase().includes(q)
-      );
+    const raw = search.trim();
+    if (!raw) {
+      return {
+        isSearching: false,
+        query: '',
+        directMatches: list,
+        nearbyMatches: [],
+        matchedAreas: [],
+        proximityTitle: '',
+        displayedList: list,
+      };
     }
 
-    return list;
-  }, [assignedAtms, pendingAtms, auditedAtms, statusFilter, vendorFilter, zoneFilter, search]);
+    const nq = normalizeLocalityQuery(raw);
+    const tokens = nq.split(' ').filter(Boolean);
+
+    // 1. Find direct matches
+    const directMatches = [];
+    list.forEach((atm) => {
+      const text = normalizeLocalityQuery(
+        `${atm.atmId} ${atm.branchName} ${atm.location} ${atm.address} ${atm.area?.name} ${atm.vendor} ${atm.pincode} ${atm.state} ${atm.inchargeName}`
+      );
+      if (tokens.every((t) => text.includes(t))) {
+        directMatches.push({ ...atm, _searchMatchType: 'direct' });
+      }
+    });
+
+    // 2. Check proximity configuration
+    let proximity = null;
+    for (const [key, conf] of Object.entries(DELHI_LOCALITY_PROXIMITY)) {
+      if (nq.includes(key) || key.includes(nq)) {
+        proximity = conf;
+        break;
+      }
+    }
+
+    const directIds = new Set(directMatches.map((a) => String(a._id || a.id)));
+    const targetAreas = new Set(directMatches.map((a) => a.area?.name || a.zone).filter(Boolean));
+    if (proximity?.targetArea) {
+      targetAreas.add(proximity.targetArea);
+    }
+
+    // 3. Find nearby / same area ATMs
+    const nearbyMatches = [];
+    list.forEach((atm) => {
+      const id = String(atm._id || atm.id);
+      if (directIds.has(id)) return;
+
+      const aArea = atm.area?.name || atm.zone;
+      const aText = normalizeLocalityQuery(`${atm.branchName} ${atm.location} ${atm.address}`);
+
+      let isAdjacent = false;
+      if (proximity?.adjacentKeywords) {
+        isAdjacent = proximity.adjacentKeywords.some((kw) => aText.includes(kw));
+      }
+
+      const isSameArea = aArea && targetAreas.has(aArea);
+
+      if (isAdjacent || isSameArea) {
+        nearbyMatches.push({
+          ...atm,
+          _searchMatchType: 'nearby',
+          _isAdjacent: isAdjacent,
+        });
+      }
+    });
+
+    // Sort nearby so specifically adjacent localities come first, then alphabetically
+    nearbyMatches.sort((a, b) => {
+      if (a._isAdjacent && !b._isAdjacent) return -1;
+      if (!a._isAdjacent && b._isAdjacent) return 1;
+      return (a.branchName || '').localeCompare(b.branchName || '');
+    });
+
+    // Determine displayed list according to searchScopeTab
+    let displayedList = [];
+    if (searchScopeTab === 'direct') {
+      displayedList = directMatches;
+    } else if (searchScopeTab === 'nearby') {
+      displayedList = nearbyMatches;
+    } else {
+      displayedList = [...directMatches, ...nearbyMatches];
+    }
+
+    return {
+      isSearching: true,
+      query: raw,
+      directMatches,
+      nearbyMatches,
+      matchedAreas: Array.from(targetAreas),
+      proximityTitle: proximity?.title || '',
+      displayedList,
+    };
+  }, [assignedAtms, pendingAtms, auditedAtms, statusFilter, vendorFilter, zoneFilter, search, searchScopeTab]);
+
+  const filteredAtms = searchResults.displayedList;
 
   // Group filtered ATMs by Area / Zone
   const atmsByArea = useMemo(() => {
@@ -259,6 +458,36 @@ export default function AuditorDashboard() {
                 >
                   📍 {atm.area?.name || atm.zone || 'General'}
                 </span>
+
+                {atm._searchMatchType === 'direct' && (
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      padding: '2px 7px',
+                      borderRadius: 4,
+                      background: '#dcfce7',
+                      color: '#15803d',
+                      fontWeight: 700,
+                    }}
+                  >
+                    🎯 Locality Match
+                  </span>
+                )}
+
+                {atm._searchMatchType === 'nearby' && (
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      padding: '2px 7px',
+                      borderRadius: 4,
+                      background: atm._isAdjacent ? '#fef3c7' : '#ede9fe',
+                      color: atm._isAdjacent ? '#b45309' : '#6d28d9',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {atm._isAdjacent ? '📍 Adjacent Locality' : `📍 Nearby in ${atm.area?.name || 'Area'}`}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -885,6 +1114,181 @@ export default function AuditorDashboard() {
             </button>
           </div>
         </div>
+
+        {/* Popular Delhi Localities Quick Search Bar */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 6,
+            marginBottom: 16,
+            padding: '8px 12px',
+            background: '#f8fafc',
+            borderRadius: 8,
+            border: '1px solid #e2e8f0',
+          }}
+        >
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span>🏙️</span> Popular Localities:
+          </span>
+          {POPULAR_LOCALITIES.map((loc) => {
+            const isSelected = search.trim().toLowerCase() === loc.toLowerCase();
+            return (
+              <button
+                key={loc}
+                type="button"
+                onClick={() => {
+                  if (isSelected) {
+                    setSearch('');
+                    setSearchScopeTab('all');
+                  } else {
+                    setSearch(loc);
+                    setSearchScopeTab('all');
+                  }
+                }}
+                style={{
+                  padding: '3px 9px',
+                  borderRadius: 16,
+                  fontSize: '0.78rem',
+                  fontWeight: isSelected ? 700 : 500,
+                  background: isSelected ? '#1e1b4b' : '#ffffff',
+                  color: isSelected ? '#ffffff' : '#334155',
+                  border: isSelected ? '1px solid #1e1b4b' : '1px solid #cbd5e1',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {loc}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Active Locality Search Intelligence Banner */}
+        {searchResults.isSearching && (
+          <div
+            style={{
+              padding: '12px 16px',
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #f5f3ff 100%)',
+              border: '1px solid #c7d2fe',
+              marginBottom: 18,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 12,
+            }}
+          >
+            <div>
+              <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e1b4b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>🔍</span>
+                <span>Locality Search: "{searchResults.query}"</span>
+                {searchResults.proximityTitle && (
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#6d28d9' }}>
+                    ({searchResults.proximityTitle})
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: 3 }}>
+                {searchResults.directMatches.length > 0 ? (
+                  <>
+                    Found <strong style={{ color: '#16a34a' }}>{searchResults.directMatches.length} matching ATM(s)</strong> in this locality
+                    {searchResults.nearbyMatches.length > 0 && (
+                      <> + <strong style={{ color: '#7c3aed' }}>{searchResults.nearbyMatches.length} nearby ATMs</strong> in {searchResults.matchedAreas.join(', ')}</>
+                    )}
+                  </>
+                ) : searchResults.nearbyMatches.length > 0 ? (
+                  <>
+                    No direct named branch, but found <strong style={{ color: '#7c3aed' }}>{searchResults.nearbyMatches.length} nearby ATMs around this locality</strong> in {searchResults.matchedAreas.join(', ')}.
+                  </>
+                ) : (
+                  <span>No ATMs found matching this locality.</span>
+                )}
+              </div>
+            </div>
+
+            {/* Scope tabs */}
+            {(searchResults.directMatches.length > 0 || searchResults.nearbyMatches.length > 0) && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setSearchScopeTab('all')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 20,
+                    fontSize: '0.78rem',
+                    fontWeight: searchScopeTab === 'all' ? 700 : 500,
+                    background: searchScopeTab === 'all' ? '#1e1b4b' : '#ffffff',
+                    color: searchScopeTab === 'all' ? '#ffffff' : '#334155',
+                    border: '1px solid #cbd5e1',
+                    cursor: 'pointer',
+                  }}
+                >
+                  All ({searchResults.directMatches.length + searchResults.nearbyMatches.length})
+                </button>
+
+                {searchResults.directMatches.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchScopeTab('direct')}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 20,
+                      fontSize: '0.78rem',
+                      fontWeight: searchScopeTab === 'direct' ? 700 : 500,
+                      background: searchScopeTab === 'direct' ? '#16a34a' : '#ffffff',
+                      color: searchScopeTab === 'direct' ? '#ffffff' : '#15803d',
+                      border: '1px solid #86efac',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🎯 Direct Matches ({searchResults.directMatches.length})
+                  </button>
+                )}
+
+                {searchResults.nearbyMatches.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchScopeTab('nearby')}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 20,
+                      fontSize: '0.78rem',
+                      fontWeight: searchScopeTab === 'nearby' ? 700 : 500,
+                      background: searchScopeTab === 'nearby' ? '#7c3aed' : '#ffffff',
+                      color: searchScopeTab === 'nearby' ? '#ffffff' : '#6d28d9',
+                      border: '1px solid #c4b5fd',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    📍 Nearby in Same Area ({searchResults.nearbyMatches.length})
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    setSearchScopeTab('all');
+                  }}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: 14,
+                    fontSize: '0.75rem',
+                    color: '#dc2626',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ✕ Clear
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {loading && (
           <p style={{ color: 'var(--color-text-muted)', padding: '24px 0' }}>
