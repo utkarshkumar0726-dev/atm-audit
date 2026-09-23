@@ -66,6 +66,7 @@ export default function AuditorAudits() {
   }
 
   const [zoneFilter, setZoneFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'area'
 
   // Unique zones / areas with count for filter dropdown & chips
   const uniqueZones = useMemo(() => {
@@ -97,12 +98,121 @@ export default function AuditorAudits() {
     return list;
   }, [audits, zoneFilter, search]);
 
+  // Group filtered audits by Area
+  const auditsByArea = useMemo(() => {
+    const groups = new Map();
+    filteredAudits.forEach((a) => {
+      const areaName = a.area || 'General';
+      if (!groups.has(areaName)) {
+        groups.set(areaName, []);
+      }
+      groups.get(areaName).push(a);
+    });
+    return Array.from(groups.entries())
+      .map(([areaName, list]) => ({
+        areaName,
+        audits: list,
+        total: list.length,
+      }))
+      .sort((a, b) => a.areaName.localeCompare(b.areaName));
+  }, [filteredAudits]);
+
   const stats = useMemo(() => {
     const totalSubmitted = audits.length;
     const totalPhotos = audits.reduce((sum, a) => sum + (a.photos?.length || 0), 0);
     const uniqueZonesCount = uniqueZones.length;
     return { totalSubmitted, totalPhotos, uniqueZones: uniqueZonesCount };
   }, [audits, uniqueZones]);
+
+  function renderAuditsTable(list) {
+    return (
+      <div style={{ overflowX: 'auto' }}>
+        <table>
+          <thead>
+            <tr>
+              <th>ATM ID</th>
+              <th>Area / Zone</th>
+              <th>Submitted Date & Time</th>
+              <th>Photos</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((audit) => (
+              <tr key={audit._id}>
+                <td>
+                  <span
+                    style={{
+                      fontFamily: 'monospace',
+                      fontWeight: 700,
+                      fontSize: '0.95rem',
+                      color: 'var(--color-primary)',
+                      background: 'rgba(37, 99, 235, 0.08)',
+                      padding: '4px 8px',
+                      borderRadius: 6,
+                    }}
+                  >
+                    {audit.atmId}
+                  </span>
+                </td>
+                <td>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      background: '#f1f5f9',
+                      color: '#334155',
+                    }}
+                  >
+                    📍 {audit.area || 'General'}
+                  </span>
+                </td>
+                <td style={{ color: '#475569', fontSize: '0.9rem' }}>
+                  {new Date(audit.createdAt).toLocaleString(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
+                </td>
+                <td>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: '0.85rem',
+                      color: '#475569',
+                    }}
+                  >
+                    📸 {audit.photos?.length || 0} photo(s)
+                  </span>
+                </td>
+                <td style={{ textAlign: 'right' }}>
+                  <button
+                    onClick={() => openAuditDetail(audit._id)}
+                    style={{
+                      padding: '6px 14px',
+                      fontSize: '0.85rem',
+                      fontWeight: 500,
+                      borderRadius: 6,
+                      background: '#f8fafc',
+                      color: 'var(--color-primary)',
+                      border: '1px solid var(--color-border)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    👁 View Details
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -239,7 +349,7 @@ export default function AuditorAudits() {
           </div>
         </div>
 
-        {/* Search & Zone Filter Bar */}
+        {/* Search, Area Filter & View Mode Bar */}
         <div
           style={{
             display: 'flex',
@@ -265,35 +375,90 @@ export default function AuditorAudits() {
             }}
           />
 
-          {uniqueZones.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>📍 Zone/Area:</span>
-              <select
-                value={zoneFilter}
-                onChange={(e) => setZoneFilter(e.target.value)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            {uniqueZones.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>📍 Area / Zone:</span>
+                <select
+                  value={zoneFilter}
+                  onChange={(e) => setZoneFilter(e.target.value)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 8,
+                    border: zoneFilter !== 'all' ? '1.5px solid #7c3aed' : '1px solid var(--color-border)',
+                    fontSize: '0.86rem',
+                    background: zoneFilter !== 'all' ? '#f5f3ff' : '#ffffff',
+                    color: zoneFilter !== 'all' ? '#6d28d9' : '#1e293b',
+                    fontWeight: zoneFilter !== 'all' ? 700 : 400,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="all">All Areas ({audits.length})</option>
+                  {uniqueZones.map((z) => (
+                    <option key={z.name} value={z.name}>
+                      {z.name} ({z.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* View Mode Switcher */}
+            <div
+              style={{
+                display: 'inline-flex',
+                borderRadius: 8,
+                border: '1px solid var(--color-border)',
+                background: '#f1f5f9',
+                padding: 3,
+                gap: 3,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
                 style={{
-                  padding: '8px 14px',
-                  borderRadius: 8,
-                  border: zoneFilter !== 'all' ? '1.5px solid #7c3aed' : '1px solid var(--color-border)',
-                  fontSize: '0.86rem',
-                  background: zoneFilter !== 'all' ? '#f5f3ff' : '#ffffff',
-                  color: zoneFilter !== 'all' ? '#6d28d9' : '#1e293b',
-                  fontWeight: zoneFilter !== 'all' ? 700 : 400,
+                  padding: '6px 12px',
+                  fontSize: '0.82rem',
+                  fontWeight: viewMode === 'table' ? 700 : 500,
+                  background: viewMode === 'table' ? '#ffffff' : 'transparent',
+                  color: viewMode === 'table' ? '#1e293b' : '#64748b',
+                  border: viewMode === 'table' ? '1px solid #cbd5e1' : 'none',
+                  borderRadius: 6,
                   cursor: 'pointer',
+                  boxShadow: viewMode === 'table' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
                 }}
               >
-                <option value="all">All Zones ({audits.length})</option>
-                {uniqueZones.map((z) => (
-                  <option key={z.name} value={z.name}>
-                    {z.name} ({z.count})
-                  </option>
-                ))}
-              </select>
+                <span>📄</span> Table View
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('area')}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '0.82rem',
+                  fontWeight: viewMode === 'area' ? 700 : 500,
+                  background: viewMode === 'area' ? '#7c3aed' : 'transparent',
+                  color: viewMode === 'area' ? '#ffffff' : '#64748b',
+                  border: viewMode === 'area' ? '1px solid #6d28d9' : 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  boxShadow: viewMode === 'area' ? '0 1px 3px rgba(124, 58, 237, 0.3)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <span>📂</span> Area-Wise View ({uniqueZones.length})
+              </button>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Quick Zone / Area Filter Chips */}
+        {/* Quick Area Filter Chips */}
         {uniqueZones.length > 1 && (
           <div
             style={{
@@ -309,7 +474,7 @@ export default function AuditorAudits() {
             }}
           >
             <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span>📍</span> Zone Filter:
+              <span>📍</span> Quick Area Filter:
             </span>
             <button
               type="button"
@@ -326,7 +491,7 @@ export default function AuditorAudits() {
                 transition: 'all 0.15s ease',
               }}
             >
-              All ({audits.length})
+              All Areas ({audits.length})
             </button>
             {uniqueZones.map((z) => {
               const isSelected = zoneFilter === z.name;
@@ -367,7 +532,7 @@ export default function AuditorAudits() {
                   marginLeft: 4,
                 }}
               >
-                ✕ Reset
+                ✕ Reset Area
               </button>
             )}
           </div>
@@ -410,91 +575,54 @@ export default function AuditorAudits() {
         )}
 
         {!loading && filteredAudits.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>ATM ID</th>
-                  <th>Area / Zone</th>
-                  <th>Submitted Date & Time</th>
-                  <th>Photos</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAudits.map((audit) => (
-                  <tr key={audit._id}>
-                    <td>
+          viewMode === 'area' ? (
+            /* Area-Wise Grouped Audits View */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {auditsByArea.map((group) => (
+                <div
+                  key={group.areaName}
+                  style={{
+                    borderRadius: 12,
+                    border: '1px solid #e2e8f0',
+                    background: '#ffffff',
+                    overflow: 'hidden',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: '12px 18px',
+                      background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                      borderBottom: '1px solid #e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <h3 style={{ margin: 0, fontSize: '1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>📍</span> Area: {group.areaName}
                       <span
                         style={{
-                          fontFamily: 'monospace',
+                          fontSize: '0.72rem',
                           fontWeight: 700,
-                          fontSize: '0.95rem',
-                          color: 'var(--color-primary)',
-                          background: 'rgba(37, 99, 235, 0.08)',
-                          padding: '4px 8px',
-                          borderRadius: 6,
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          background: '#e0e7ff',
+                          color: '#4338ca',
                         }}
                       >
-                        {audit.atmId}
+                        {group.total} {group.total === 1 ? 'Audit' : 'Audits'}
                       </span>
-                    </td>
-                    <td>
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '3px 8px',
-                          borderRadius: 6,
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          background: '#f1f5f9',
-                          color: '#334155',
-                        }}
-                      >
-                        {audit.area}
-                      </span>
-                    </td>
-                    <td style={{ color: '#475569', fontSize: '0.9rem' }}>
-                      {new Date(audit.createdAt).toLocaleString(undefined, {
-                        dateStyle: 'medium',
-                        timeStyle: 'short',
-                      })}
-                    </td>
-                    <td>
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          fontSize: '0.85rem',
-                          color: '#475569',
-                        }}
-                      >
-                        📸 {audit.photos?.length || 0} photo(s)
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button
-                        onClick={() => openAuditDetail(audit._id)}
-                        style={{
-                          padding: '6px 14px',
-                          fontSize: '0.85rem',
-                          fontWeight: 500,
-                          borderRadius: 6,
-                          background: '#f8fafc',
-                          color: 'var(--color-primary)',
-                          border: '1px solid var(--color-border)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        👁 View Details
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </h3>
+                  </div>
+                  {renderAuditsTable(group.audits)}
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Flat Table View */
+            renderAuditsTable(filteredAudits)
+          )
         )}
       </div>
 

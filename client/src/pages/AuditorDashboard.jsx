@@ -20,6 +20,7 @@ export default function AuditorDashboard() {
   const [vendorFilter, setVendorFilter] = useState('all');
   const [zoneFilter, setZoneFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'area'
 
   // Audit report modal (for audited ATMs)
   const [selectedAuditId, setSelectedAuditId] = useState(null);
@@ -130,6 +131,37 @@ export default function AuditorDashboard() {
     return list;
   }, [assignedAtms, pendingAtms, auditedAtms, statusFilter, vendorFilter, zoneFilter, search]);
 
+  // Group filtered ATMs by Area / Zone
+  const atmsByArea = useMemo(() => {
+    const groups = new Map();
+    filteredAtms.forEach((atm) => {
+      const areaName = atm.area?.name || atm.zone || 'General';
+      if (!groups.has(areaName)) {
+        groups.set(areaName, []);
+      }
+      groups.get(areaName).push(atm);
+    });
+
+    return Array.from(groups.entries())
+      .map(([areaName, atms]) => {
+        const pendingCount = atms.filter((a) => {
+          const key = String(a.atmId || '').trim().toLowerCase();
+          return !auditedAtmIds.has(key) && !a.isAudited;
+        }).length;
+        const auditedCount = atms.length - pendingCount;
+        const percent = atms.length > 0 ? Math.round((auditedCount / atms.length) * 100) : 0;
+        return {
+          areaName,
+          atms,
+          total: atms.length,
+          pendingCount,
+          auditedCount,
+          percent,
+        };
+      })
+      .sort((a, b) => a.areaName.localeCompare(b.areaName));
+  }, [filteredAtms, auditedAtmIds]);
+
   // Open audit detail modal for an ATM
   function openAuditReport(atmId) {
     const key = String(atmId || '').trim().toLowerCase();
@@ -163,6 +195,211 @@ export default function AuditorDashboard() {
     setSelectedAuditId(null);
     setDetailAudit(null);
     setDetailError('');
+  }
+
+  function renderAtmCard(atm) {
+    const key = String(atm.atmId || '').trim().toLowerCase();
+    const isAudited = auditedAtmIds.has(key) || atm.isAudited;
+    const auditObj = auditByAtmId.get(key);
+    const links = (atm.links && atm.links.length > 0) ? atm.links : atm.link ? [atm.link] : [];
+
+    return (
+      <div
+        key={atm._id || atm.id}
+        style={{
+          padding: '16px 18px',
+          borderRadius: 12,
+          border: isAudited
+            ? '1px solid #bbf7d0'
+            : '1px solid var(--color-border)',
+          background: '#ffffff',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          gap: 12,
+          boxShadow: isAudited
+            ? '0 1px 3px rgba(16, 185, 129, 0.08)'
+            : '0 1px 3px rgba(0, 0, 0, 0.04)',
+          position: 'relative',
+          transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+        }}
+      >
+        <div>
+          {/* Card Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+            <div>
+              <span style={{ fontWeight: 700, color: 'var(--color-text)', fontFamily: 'monospace', fontSize: '1.05rem' }}>
+                {atm.atmId}
+              </span>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
+                {atm.vendor && (
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      background: '#fef3c7',
+                      color: '#b45309',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {atm.vendor}
+                  </span>
+                )}
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                    background: '#e0f2fe',
+                    color: '#0369a1',
+                    fontWeight: 600,
+                  }}
+                >
+                  📍 {atm.area?.name || atm.zone || 'General'}
+                </span>
+              </div>
+            </div>
+
+            {/* Status Badge */}
+            {isAudited ? (
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  background: '#dcfce7',
+                  color: '#15803d',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ✓ Audited
+              </span>
+            ) : (
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  background: '#fef3c7',
+                  color: '#b45309',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ⏳ Pending
+              </span>
+            )}
+          </div>
+
+          {/* Branch Name */}
+          {atm.branchName && (
+            <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginTop: 8 }}>
+              {atm.branchName}
+            </div>
+          )}
+
+          {/* Address */}
+          {atm.address && (
+            <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: 6, lineHeight: 1.4, wordBreak: 'break-word' }}>
+              📍 {atm.address} {atm.pincode ? `(PIN: ${atm.pincode})` : ''}
+            </div>
+          )}
+
+          {/* Incharge / Contact */}
+          {atm.inchargeName && (
+            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 6 }}>
+              👤 Incharge: {atm.inchargeName} {atm.inchargeContact ? `(${atm.inchargeContact})` : ''}
+            </div>
+          )}
+
+          {/* Audited timestamp note if audited */}
+          {isAudited && (auditObj?.createdAt || atm.lastAuditedAt) && (
+            <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: 6, fontWeight: 500 }}>
+              Audited on: {new Date(auditObj?.createdAt || atm.lastAuditedAt).toLocaleDateString()}
+            </div>
+          )}
+        </div>
+
+        {/* Card Footer Actions */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, paddingTop: 10, borderTop: '1px solid #f1f5f9', alignItems: 'center' }}>
+          {isAudited ? (
+            <button
+              onClick={() => openAuditReport(atm.atmId)}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                borderRadius: 8,
+                background: '#ecfdf5',
+                color: '#047857',
+                border: '1px solid #a7f3d0',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              👁 View Report
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate(`/audit/new?atmId=${atm.atmId}`)}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              Audit This ATM &rarr;
+            </button>
+          )}
+
+          {/* Reference / Installation links */}
+          {links.map((l, i, arr) => (
+            <a
+              key={i}
+              href={l}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`Open Reference Link ${arr.length > 1 ? `#${i + 1}` : ''}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '8px 10px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                borderRadius: 8,
+                background: '#f0f9ff',
+                color: '#0284c7',
+                border: '1px solid #bae6fd',
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              🔗 Link {arr.length > 1 ? `${i + 1}` : ''} ↗
+            </a>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -460,10 +697,10 @@ export default function AuditorDashboard() {
             </div>
           )}
 
-          {/* Zone / Area Filter Dropdown */}
+          {/* Area / Zone Filter Dropdown */}
           {uniqueZones.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>📍 Zone/Area:</span>
+              <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>📍 Area / Zone:</span>
               <select
                 value={zoneFilter}
                 onChange={(e) => setZoneFilter(e.target.value)}
@@ -478,7 +715,7 @@ export default function AuditorDashboard() {
                   cursor: 'pointer',
                 }}
               >
-                <option value="all">All Zones ({assignedAtms.length})</option>
+                <option value="all">All Areas ({assignedAtms.length})</option>
                 {uniqueZones.map((z) => (
                   <option key={z.name} value={z.name}>
                     {z.name} ({z.count})
@@ -489,7 +726,7 @@ export default function AuditorDashboard() {
           )}
         </div>
 
-        {/* Quick Zone / Area Filter Chips */}
+        {/* Quick Area / Zone Filter Chips */}
         {uniqueZones.length > 1 && (
           <div
             style={{
@@ -505,7 +742,7 @@ export default function AuditorDashboard() {
             }}
           >
             <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span>📍</span> Zone Filter:
+              <span>📍</span> Quick Area Filter:
             </span>
             <button
               type="button"
@@ -522,7 +759,7 @@ export default function AuditorDashboard() {
                 transition: 'all 0.15s ease',
               }}
             >
-              All ({assignedAtms.length})
+              All Areas ({assignedAtms.length})
             </button>
             {uniqueZones.map((z) => {
               const isSelected = zoneFilter === z.name;
@@ -563,14 +800,23 @@ export default function AuditorDashboard() {
                   marginLeft: 4,
                 }}
               >
-                ✕ Reset
+                ✕ Reset Area
               </button>
             )}
           </div>
         )}
 
-        {/* Search Bar */}
-        <div style={{ marginBottom: 20 }}>
+        {/* Search Bar & View Mode Switcher */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
           <input
             type="text"
             placeholder="🔍 Search assigned ATMs by ATM ID, Branch, Area, Vendor, Address..."
@@ -585,6 +831,59 @@ export default function AuditorDashboard() {
               fontSize: '0.95rem',
             }}
           />
+
+          {/* View Mode Toggle: Grid vs Area-wise */}
+          <div
+            style={{
+              display: 'inline-flex',
+              borderRadius: 8,
+              border: '1px solid var(--color-border)',
+              background: '#f1f5f9',
+              padding: 3,
+              gap: 3,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              style={{
+                padding: '6px 13px',
+                fontSize: '0.84rem',
+                fontWeight: viewMode === 'grid' ? 700 : 500,
+                background: viewMode === 'grid' ? '#ffffff' : 'transparent',
+                color: viewMode === 'grid' ? '#1e293b' : '#64748b',
+                border: viewMode === 'grid' ? '1px solid #cbd5e1' : 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                boxShadow: viewMode === 'grid' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span>⊞</span> Grid View
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('area')}
+              style={{
+                padding: '6px 13px',
+                fontSize: '0.84rem',
+                fontWeight: viewMode === 'area' ? 700 : 500,
+                background: viewMode === 'area' ? '#7c3aed' : 'transparent',
+                color: viewMode === 'area' ? '#ffffff' : '#64748b',
+                border: viewMode === 'area' ? '1px solid #6d28d9' : 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                boxShadow: viewMode === 'area' ? '0 1px 3px rgba(124, 58, 237, 0.3)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span>📂</span> Area-Wise View ({uniqueZones.length})
+            </button>
+          </div>
         </div>
 
         {loading && (
@@ -594,7 +893,7 @@ export default function AuditorDashboard() {
         )}
         {error && <p className="error">{error}</p>}
 
-        {/* ATMs Grid */}
+        {/* ATMs Content */}
         {!loading && (
           <div>
             {assignedAtms.length === 0 ? (
@@ -620,7 +919,92 @@ export default function AuditorDashboard() {
               <p className="empty-state">
                 No assigned ATMs found matching the selected filters or search query "{search}".
               </p>
+            ) : viewMode === 'area' ? (
+              /* Area-Wise Grouped View */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                {atmsByArea.map((group) => (
+                  <div
+                    key={group.areaName}
+                    style={{
+                      borderRadius: 12,
+                      border: '1px solid #e2e8f0',
+                      background: '#ffffff',
+                      overflow: 'hidden',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                    }}
+                  >
+                    {/* Area Group Header */}
+                    <div
+                      style={{
+                        padding: '14px 18px',
+                        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                        borderBottom: '1px solid #e2e8f0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: '1.25rem' }}>📍</span>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            Area: {group.areaName}
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: 999,
+                                background: '#e0e7ff',
+                                color: '#4338ca',
+                              }}
+                            >
+                              {group.total} {group.total === 1 ? 'ATM' : 'ATMs'}
+                            </span>
+                          </h3>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 3, fontSize: '0.8rem', color: '#64748b' }}>
+                            <span style={{ color: '#d97706', fontWeight: 600 }}>⏳ {group.pendingCount} Pending</span>
+                            <span>•</span>
+                            <span style={{ color: '#16a34a', fontWeight: 600 }}>✅ {group.auditedCount} Audited</span>
+                            <span>•</span>
+                            <span>Completion: {group.percent}%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 100, height: 7, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                          <div
+                            style={{
+                              width: `${group.percent}%`,
+                              height: '100%',
+                              background: group.percent === 100 ? '#10b981' : '#7c3aed',
+                              borderRadius: 999,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ATM Cards for this Area */}
+                    <div
+                      style={{
+                        padding: 16,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
+                        gap: 16,
+                        background: '#fafbfc',
+                      }}
+                    >
+                      {group.atms.map(renderAtmCard)}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              /* Flat Grid View */
               <div
                 style={{
                   display: 'grid',
@@ -628,209 +1012,7 @@ export default function AuditorDashboard() {
                   gap: 16,
                 }}
               >
-                {filteredAtms.map((atm) => {
-                  const key = String(atm.atmId || '').trim().toLowerCase();
-                  const isAudited = auditedAtmIds.has(key) || atm.isAudited;
-                  const auditObj = auditByAtmId.get(key);
-
-                  return (
-                    <div
-                      key={atm._id || atm.id}
-                      style={{
-                        padding: '16px 18px',
-                        borderRadius: 12,
-                        border: isAudited
-                          ? '1px solid #bbf7d0'
-                          : '1px solid var(--color-border)',
-                        background: '#ffffff',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        gap: 12,
-                        boxShadow: isAudited
-                          ? '0 1px 3px rgba(16, 185, 129, 0.08)'
-                          : '0 1px 3px rgba(0, 0, 0, 0.04)',
-                        position: 'relative',
-                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                      }}
-                    >
-                      <div>
-                        {/* Card Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                          <div>
-                            <span style={{ fontWeight: 700, color: 'var(--color-text)', fontFamily: 'monospace', fontSize: '1.05rem' }}>
-                              {atm.atmId}
-                            </span>
-                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
-                              {atm.vendor && (
-                                <span
-                                  style={{
-                                    fontSize: '0.72rem',
-                                    padding: '2px 6px',
-                                    borderRadius: 4,
-                                    background: '#fef3c7',
-                                    color: '#b45309',
-                                    fontWeight: 700,
-                                    textTransform: 'uppercase',
-                                  }}
-                                >
-                                  {atm.vendor}
-                                </span>
-                              )}
-                              <span
-                                style={{
-                                  fontSize: '0.72rem',
-                                  padding: '2px 6px',
-                                  borderRadius: 4,
-                                  background: '#e0f2fe',
-                                  color: '#0369a1',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                {atm.area?.name || atm.zone || 'General'}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Status Badge */}
-                          {isAudited ? (
-                            <span
-                              style={{
-                                fontSize: '0.75rem',
-                                padding: '3px 8px',
-                                borderRadius: 6,
-                                background: '#dcfce7',
-                                color: '#15803d',
-                                fontWeight: 700,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              ✓ Audited
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                fontSize: '0.75rem',
-                                padding: '3px 8px',
-                                borderRadius: 6,
-                                background: '#fef3c7',
-                                color: '#b45309',
-                                fontWeight: 700,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              ⏳ Pending
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Branch Name */}
-                        {atm.branchName && (
-                          <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginTop: 8 }}>
-                            {atm.branchName}
-                          </div>
-                        )}
-
-                        {/* Address */}
-                        {atm.address && (
-                          <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: 6, lineHeight: 1.4, wordBreak: 'break-word' }}>
-                            📍 {atm.address} {atm.pincode ? `(PIN: ${atm.pincode})` : ''}
-                          </div>
-                        )}
-
-                        {/* Incharge / Contact */}
-                        {atm.inchargeName && (
-                          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 6 }}>
-                            👤 Incharge: {atm.inchargeName} {atm.inchargeContact ? `(${atm.inchargeContact})` : ''}
-                          </div>
-                        )}
-
-                        {/* Audited timestamp note if audited */}
-                        {isAudited && (auditObj?.createdAt || atm.lastAuditedAt) && (
-                          <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: 6, fontWeight: 500 }}>
-                            Audited on: {new Date(auditObj?.createdAt || atm.lastAuditedAt).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Card Footer Actions */}
-                      <div style={{ display: 'flex', gap: 8, marginTop: 8, paddingTop: 10, borderTop: '1px solid #f1f5f9', alignItems: 'center' }}>
-                        {isAudited ? (
-                          <button
-                            onClick={() => openAuditReport(atm.atmId)}
-                            style={{
-                              flex: 1,
-                              padding: '8px 12px',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              borderRadius: 8,
-                              background: '#ecfdf5',
-                              color: '#047857',
-                              border: '1px solid #a7f3d0',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 6,
-                            }}
-                          >
-                            👁 View Report
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => navigate(`/audit/new?atmId=${atm.atmId}`)}
-                            style={{
-                              flex: 1,
-                              padding: '8px 12px',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              borderRadius: 8,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 6,
-                            }}
-                          >
-                            Audit This ATM &rarr;
-                          </button>
-                        )}
-
-                        {/* Reference / Installation links */}
-                        {((atm.links && atm.links.length > 0) ? atm.links : atm.link ? [atm.link] : []).map((l, i, arr) => (
-                          <a
-                            key={i}
-                            href={l}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={`Open Reference Link ${arr.length > 1 ? `#${i + 1}` : ''}`}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              padding: '8px 10px',
-                              fontSize: '0.8rem',
-                              fontWeight: 600,
-                              borderRadius: 8,
-                              background: '#f0f9ff',
-                              color: '#0284c7',
-                              border: '1px solid #bae6fd',
-                              textDecoration: 'none',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            🔗 Link {arr.length > 1 ? `${i + 1}` : ''} ↗
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+                {filteredAtms.map(renderAtmCard)}
               </div>
             )}
           </div>
