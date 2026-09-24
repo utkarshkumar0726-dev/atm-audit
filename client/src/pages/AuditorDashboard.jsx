@@ -601,31 +601,34 @@ export default function AuditorDashboard() {
           )}
 
           {/* Reference / Installation links */}
-          {links.map((l, i, arr) => (
-            <a
-              key={i}
-              href={l}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`Open Reference Link ${arr.length > 1 ? `#${i + 1}` : ''}`}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '8px 10px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                borderRadius: 8,
-                background: '#f0f9ff',
-                color: '#0284c7',
-                border: '1px solid #bae6fd',
-                textDecoration: 'none',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              🔗 Link {arr.length > 1 ? `${i + 1}` : ''} ↗
-            </a>
-          ))}
+          {links.map((l, i, arr) => {
+            const isBom = l.toLowerCase().includes('bom');
+            return (
+              <a
+                key={i}
+                href={l}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={isBom ? 'Open / Download BOM (Bill of Materials) Document' : `Open Reference Link ${arr.length > 1 ? `#${i + 1}` : ''}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '8px 10px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  borderRadius: 8,
+                  background: isBom ? '#fef3c7' : '#f0f9ff',
+                  color: isBom ? '#b45309' : '#0284c7',
+                  border: isBom ? '1px solid #fde68a' : '1px solid #bae6fd',
+                  textDecoration: 'none',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {isBom ? '📄 BOM Doc ↗' : `🔗 Link ${arr.length > 1 ? `${i + 1}` : ''} ↗`}
+              </a>
+            );
+          })}
         </div>
       </div>
     );

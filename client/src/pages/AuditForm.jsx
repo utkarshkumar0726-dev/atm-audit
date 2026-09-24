@@ -577,29 +577,32 @@ export default function AuditForm() {
                     🔗 Site / Installation Link:
                   </span>
                   {(selectedAtm.links && selectedAtm.links.length > 0 ? selectedAtm.links : [selectedAtm.link]).map(
-                    (url, idx) => (
-                      <a
-                        key={idx}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '6px 14px',
-                          background: '#0284c7',
-                          color: '#ffffff',
-                          borderRadius: 6,
-                          fontWeight: 600,
-                          fontSize: '0.82rem',
-                          textDecoration: 'none',
-                          boxShadow: '0 1px 3px rgba(2, 132, 199, 0.2)',
-                        }}
-                      >
-                        <span>🌐</span> Open Site / IR Link {selectedAtm.links?.length > 1 ? `#${idx + 1}` : ''} ↗
-                      </a>
-                    )
+                    (url, idx) => {
+                      const isBom = url && url.toLowerCase().includes('bom');
+                      return (
+                        <a
+                          key={idx}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 14px',
+                            background: isBom ? '#d97706' : '#0284c7',
+                            color: '#ffffff',
+                            borderRadius: 6,
+                            fontWeight: 600,
+                            fontSize: '0.82rem',
+                            textDecoration: 'none',
+                            boxShadow: isBom ? '0 1px 3px rgba(217, 119, 6, 0.2)' : '0 1px 3px rgba(2, 132, 199, 0.2)',
+                          }}
+                        >
+                          <span>{isBom ? '📄' : '🌐'}</span> {isBom ? 'Open BOM Document' : 'Open Site / IR Link'} {selectedAtm.links?.length > 1 ? `#${idx + 1}` : ''} ↗
+                        </a>
+                      );
+                    }
                   )}
                   {selectedAtm.deviceId && (
                     <span
@@ -753,29 +756,32 @@ export default function AuditForm() {
           {(selectedAtm?.link || (selectedAtm?.links && selectedAtm.links.length > 0)) && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {(selectedAtm.links && selectedAtm.links.length > 0 ? selectedAtm.links : [selectedAtm.link]).map(
-                (url, idx) => (
-                  <a
-                    key={idx}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '8px 16px',
-                      background: '#0284c7',
-                      color: '#ffffff',
-                      borderRadius: 8,
-                      fontWeight: 600,
-                      fontSize: '0.85rem',
-                      textDecoration: 'none',
-                      boxShadow: '0 2px 4px rgba(2, 132, 199, 0.25)',
-                    }}
-                  >
-                    <span>🔗</span> Open Site Link {selectedAtm.links?.length > 1 ? `#${idx + 1}` : ''} ↗
-                  </a>
-                )
+                (url, idx) => {
+                  const isBom = url && url.toLowerCase().includes('bom');
+                  return (
+                    <a
+                      key={idx}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '8px 16px',
+                        background: isBom ? '#d97706' : '#0284c7',
+                        color: '#ffffff',
+                        borderRadius: 8,
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                        textDecoration: 'none',
+                        boxShadow: isBom ? '0 2px 4px rgba(217, 119, 6, 0.25)' : '0 2px 4px rgba(2, 132, 199, 0.25)',
+                      }}
+                    >
+                      <span>{isBom ? '📄' : '🔗'}</span> {isBom ? 'Open BOM Document' : 'Open Site Link'} {selectedAtm.links?.length > 1 ? `#${idx + 1}` : ''} ↗
+                    </a>
+                  );
+                }
               )}
             </div>
           )}

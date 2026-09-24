@@ -10,6 +10,7 @@ const checklistRoutes = require('./routes/checklist');
 const assignmentRoutes = require('./routes/assignments');
 const logRoutes = require('./routes/logs');
 
+const path = require('path');
 const app = express();
 
 // A single bad request throwing inside an async route handler would otherwise
@@ -20,6 +21,8 @@ process.on('unhandledRejection', (err) => {
 
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
+
+app.use('/documents', express.static(path.join(__dirname, 'public/documents')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/audits', auditRoutes);
