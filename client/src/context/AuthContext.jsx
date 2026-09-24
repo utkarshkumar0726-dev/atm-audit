@@ -29,9 +29,15 @@ export function AuthProvider({ children }) {
     return res.data.user;
   }
 
-  function logout() {
-    localStorage.removeItem('token');
-    setUser(null);
+  async function logout() {
+    try {
+      await api.post('/auth/logout');
+    } catch (err) {
+      // Ignore network or token expiration errors on logout
+    } finally {
+      localStorage.removeItem('token');
+      setUser(null);
+    }
   }
 
   function updateUser(updatedUser, newToken) {

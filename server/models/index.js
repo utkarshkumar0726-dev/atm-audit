@@ -5,6 +5,8 @@ const ChecklistQuestion = require('./ChecklistQuestion');
 const Atm = require('./Atm');
 const Assignment = require('./Assignment');
 const Audit = require('./Audit');
+const LoginLog = require('./LoginLog');
+const AuditLog = require('./AuditLog');
 
 module.exports = {
   User,
@@ -14,4 +16,7 @@ module.exports = {
   Atm,
   Assignment,
   Audit,
+  LoginLog,
+  AuditLog,
 };
+

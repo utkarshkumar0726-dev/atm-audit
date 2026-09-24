@@ -7,6 +7,7 @@ const LINKS = [
   { to: '/admin/auditors', label: 'Auditors', icon: '👥' },
   { to: '/admin/areas', label: 'Zones & Areas', icon: '🗺️' },
   { to: '/admin/checklist', label: 'Checklist', icon: '📋' },
+  { to: '/admin/logs', label: 'Logs & Activities', icon: '📑' },
 ];
 
 export default function AdminNav() {

@@ -1,8 +1,9 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User, Assignment } = require('../models');
+const { User, Assignment, LoginLog } = require('../models');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { parseUserAgent, getClientIp } = require('../utils/agentParser');
 
 const router = express.Router();
 
@@ -40,6 +41,26 @@ router.post('/login', async (req, res) => {
     }
 
     const token = signToken(user);
+
+    // Record Login Log event
+    try {
+      const ip = getClientIp(req);
+      const { device, browser } = parseUserAgent(req.headers['user-agent']);
+      await LoginLog.create({
+        user: user._id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+        action: 'LOGIN',
+        ip,
+        userAgent: req.headers['user-agent'] || '',
+        device,
+        browser,
+      });
+    } catch (logErr) {
+      console.error('Failed to write login log:', logErr);
+    }
+
     res.json({
       token,
       user: {
@@ -55,6 +76,29 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ message: 'Server error during login' });
+  }
+});
+
+// POST /api/auth/logout - records logout event
+router.post('/logout', requireAuth, async (req, res) => {
+  try {
+    const ip = getClientIp(req);
+    const { device, browser } = parseUserAgent(req.headers['user-agent']);
+    await LoginLog.create({
+      user: req.user.id,
+      username: req.user.username,
+      name: req.user.name,
+      role: req.user.role,
+      action: 'LOGOUT',
+      ip,
+      userAgent: req.headers['user-agent'] || '',
+      device,
+      browser,
+    });
+    res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    console.error('Logout error:', err);
+    res.status(500).json({ message: 'Server error during logout' });
   }
 });
 

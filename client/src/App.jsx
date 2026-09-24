@@ -12,6 +12,7 @@ import AdminAreas from './pages/AdminAreas';
 import AdminAtms from './pages/AdminAtms';
 import AdminChecklist from './pages/AdminChecklist';
 import AdminAssignments from './pages/AdminAssignments';
+import AdminLogs from './pages/AdminLogs';
 
 export default function App() {
   return (
@@ -107,6 +108,14 @@ export default function App() {
             element={
               <ProtectedRoute role="admin">
                 <AdminAssignments />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/logs"
+            element={
+              <ProtectedRoute role="admin">
+                <AdminLogs />
               </ProtectedRoute>
             }
           />

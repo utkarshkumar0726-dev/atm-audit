@@ -1,6 +1,7 @@
 const express = require('express');
-const { Audit, User } = require('../models');
+const { Audit, User, AuditLog } = require('../models');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { parseUserAgent, getClientIp } = require('../utils/agentParser');
 
 const router = express.Router();
 
@@ -60,6 +61,33 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
       photos,
       stages,
     });
+
+    // Record Audit Log event for auditor action
+    try {
+      const ip = getClientIp(req);
+      const { device, browser } = parseUserAgent(req.headers['user-agent']);
+      const questionPhotosCount = stages?.reduce(
+        (acc, s) => acc + (s.questions?.reduce((qAcc, q) => qAcc + (q.photos?.length || 0), 0) || 0),
+        0
+      ) || 0;
+      await AuditLog.create({
+        audit: audit._id,
+        auditor: req.user.id,
+        auditorName: req.user.name,
+        auditorUsername: req.user.username,
+        atmId: audit.atmId,
+        area: audit.area,
+        action: 'AUDIT_SUBMITTED',
+        photoCount: (photos?.length || 0) + questionPhotosCount,
+        stageCount: stages?.length || 0,
+        ip,
+        userAgent: req.headers['user-agent'] || '',
+        device,
+        browser,
+      });
+    } catch (logErr) {
+      console.error('Failed to write audit log:', logErr);
+    }
 
     res.status(201).json(audit);
   } catch (err) {

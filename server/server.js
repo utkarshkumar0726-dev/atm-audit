@@ -8,6 +8,7 @@ const areaRoutes = require('./routes/areas');
 const atmRoutes = require('./routes/atms');
 const checklistRoutes = require('./routes/checklist');
 const assignmentRoutes = require('./routes/assignments');
+const logRoutes = require('./routes/logs');
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use('/api/areas', areaRoutes);
 app.use('/api/atms', atmRoutes);
 app.use('/api/checklist', checklistRoutes);
 app.use('/api/assignments', assignmentRoutes);
+app.use('/api/logs', logRoutes);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, database: 'mongodb' }));
 
