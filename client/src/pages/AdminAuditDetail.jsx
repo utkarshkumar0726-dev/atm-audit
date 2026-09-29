@@ -58,6 +58,28 @@ export default function AdminAuditDetail() {
         <p>
           <strong>Submitted:</strong> {new Date(audit.createdAt).toLocaleString()}
         </p>
+        <p>
+          <strong>Stages Audited:</strong>{' '}
+          <span
+            style={{
+              padding: '3px 8px',
+              borderRadius: 6,
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              background: audit.stages?.length >= 3 ? '#dcfce7' : '#eff6ff',
+              color: audit.stages?.length >= 3 ? '#15803d' : '#1d4ed8',
+              border: audit.stages?.length >= 3 ? '1px solid #bbf7d0' : '1px solid #bfdbfe',
+            }}
+          >
+            {audit.stages?.length >= 3
+              ? '✅ Full Audit (All 3 Stages)'
+              : audit.stages?.length === 2
+              ? '📋 Stages 1 & 2 Completed'
+              : audit.stages?.length === 1
+              ? '📦 Stage 1 (Hardware Verification) Only'
+              : `${audit.stages?.length || 0} Stages`}
+          </span>
+        </p>
 
         {audit.photos?.length > 0 && (
           <div className="photo-grid photo-grid-view">
@@ -90,6 +112,22 @@ export default function AdminAuditDetail() {
             ))}
           </div>
         ))}
+
+        {audit.stages?.length < 3 && (
+          <div
+            style={{
+              marginTop: 20,
+              padding: '12px 16px',
+              borderRadius: 8,
+              background: '#f8fafc',
+              border: '1px dashed #cbd5e1',
+              color: '#64748b',
+              fontSize: '0.9rem',
+            }}
+          >
+            ℹ️ <strong>Partial Audit:</strong> Only {audit.stages.length} of 3 stages were submitted for this inspection. Remaining stages were not included.
+          </div>
+        )}
       </div>
 
       {lightboxPhoto && <PhotoLightbox src={lightboxPhoto} onClose={() => setLightboxPhoto(null)} />}

@@ -129,6 +129,9 @@ export default function AuditForm() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [existingAuditId, setExistingAuditId] = useState(null);
+  const [continuingAudit, setContinuingAudit] = useState(false);
+  const [submittedStagesCount, setSubmittedStagesCount] = useState(3);
   const [activePhotoQuestionId, setActivePhotoQuestionId] = useState(null);
   const [cameraTarget, setCameraTarget] = useState(null); // null | 'main' | questionId
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
@@ -153,7 +156,55 @@ export default function AuditForm() {
             (a) => a.atmId === preselectedAtmId || a._id === preselectedAtmId
           );
           if (match) setSelectedAtm(match);
-          setStages(buildInitialStages(checklistRes.data));
+
+          const initial = buildInitialStages(checklistRes.data);
+          const isContinue = searchParams.get('continue') === 'true';
+
+          if (isContinue) {
+            api
+              .get(`/audits/atm/${preselectedAtmId}`)
+              .then((auditRes) => {
+                const prev = auditRes.data;
+                if (prev) {
+                  setExistingAuditId(prev._id);
+                  setContinuingAudit(true);
+                  if (prev.photos?.length) setPhotos(prev.photos);
+                  setStarted(true);
+
+                  const merged = initial.map((stage) => {
+                    const prevStage = prev.stages?.find(
+                      (ps) => ps.stageId === stage.stageId || ps.stageName === stage.stageName
+                    );
+                    if (!prevStage) return stage;
+                    return {
+                      ...stage,
+                      questions: stage.questions.map((q) => {
+                        const prevQ = prevStage.questions?.find(
+                          (pq) => pq.questionId === q.questionId || pq.code === q.code
+                        );
+                        if (!prevQ) return q;
+                        return {
+                          ...q,
+                          answer: prevQ.answer || '',
+                          reason: prevQ.reason || '',
+                          photos: prevQ.photos || [],
+                        };
+                      }),
+                    };
+                  });
+                  setStages(merged);
+                  const nextIndex = Math.min(prev.stages?.length || 0, merged.length - 1);
+                  setStageIndex(nextIndex);
+                } else {
+                  setStages(initial);
+                }
+              })
+              .catch(() => {
+                setStages(initial);
+              });
+          } else {
+            setStages(initial);
+          }
         } else {
           setStages(buildInitialStages(checklistRes.data));
         }
@@ -330,14 +381,36 @@ export default function AuditForm() {
     if (failedCount) setError(`Could not process ${failedCount} photo(s). Please try again.`);
   }
 
-  function validateCurrentStage() {
-    for (const q of currentStage.questions) {
-      if (!q.answer) return `Please answer: ${q.questionText}`;
-      if (q.answer === 'no' && !q.reason.trim()) {
-        return `Please give a reason for: ${q.questionText}`;
+  function isStageComplete(stage) {
+    if (!stage || !Array.isArray(stage.questions) || stage.questions.length === 0) return false;
+    return stage.questions.every((q) => {
+      if (!q.answer || !['yes', 'no'].includes(q.answer)) return false;
+      if (q.answer === 'no' && !q.reason?.trim()) return false;
+      return true;
+    });
+  }
+
+  function getStageAnsweredCount(stage) {
+    if (!stage || !Array.isArray(stage.questions)) return 0;
+    return stage.questions.filter((q) => q.answer === 'yes' || q.answer === 'no').length;
+  }
+
+  function validateStageByIndex(index) {
+    const stage = stages[index];
+    if (!stage) return 'Stage not found';
+    for (const q of stage.questions) {
+      if (!q.answer) {
+        return `Please answer in "${stage.stageName}": ${q.questionText}`;
+      }
+      if (q.answer === 'no' && !q.reason?.trim()) {
+        return `Please provide a reason in "${stage.stageName}" for: ${q.questionText}`;
       }
     }
     return null;
+  }
+
+  function validateCurrentStage() {
+    return validateStageByIndex(stageIndex);
   }
 
   function goNext() {
@@ -347,7 +420,7 @@ export default function AuditForm() {
       setError(validationError);
       return;
     }
-    setStageIndex((i) => i + 1);
+    setStageIndex((i) => Math.min(stages.length - 1, i + 1));
   }
 
   function goBack() {
@@ -355,24 +428,36 @@ export default function AuditForm() {
     setStageIndex((i) => Math.max(0, i - 1));
   }
 
-  async function handleSubmit() {
+  async function handleSubmitStages(targetCount) {
     setError('');
 
-    const validationError = validateCurrentStage();
-    if (validationError) {
-      setError(validationError);
-      return;
+    const count = targetCount || (stageIndex + 1);
+    for (let i = 0; i < count; i++) {
+      const stageError = validateStageByIndex(i);
+      if (stageError) {
+        setStageIndex(i);
+        setError(stageError);
+        return;
+      }
     }
+
+    const stagesToSubmit = stages.slice(0, count);
 
     setSubmitting(true);
     try {
-      await api.post('/audits', {
+      const payload = {
         atmId: selectedAtm.atmId,
         area: selectedAtm.area?.name,
         photos,
-        stages,
-      });
+        stages: stagesToSubmit,
+      };
+      if (existingAuditId) {
+        payload.auditId = existingAuditId;
+      }
+
+      await api.post('/audits', payload);
       if (user?.id) clearDraft(user.id);
+      setSubmittedStagesCount(count);
       setSuccess(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to submit audit');
@@ -388,6 +473,9 @@ export default function AuditForm() {
     setStarted(false);
     setStages(buildInitialStages(checklistStages));
     setStageIndex(0);
+    setExistingAuditId(null);
+    setContinuingAudit(false);
+    setSubmittedStagesCount(3);
     setSuccess(false);
   }
 
@@ -415,9 +503,28 @@ export default function AuditForm() {
   if (success) {
     return (
       <div className="page-center">
-        <div className="card" style={{ textAlign: 'center', maxWidth: 440, padding: 32 }}>
+        <div className="card" style={{ textAlign: 'center', maxWidth: 480, padding: 32 }}>
           <div style={{ fontSize: '3rem', marginBottom: 12 }}>✅</div>
           <h1 style={{ margin: '0 0 8px' }}>Audit Submitted!</h1>
+          <div
+            style={{
+              display: 'inline-block',
+              margin: '8px auto 16px',
+              padding: '6px 14px',
+              borderRadius: 20,
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              background: submittedStagesCount >= 3 ? '#dcfce7' : '#fef3c7',
+              color: submittedStagesCount >= 3 ? '#15803d' : '#b45309',
+              border: submittedStagesCount >= 3 ? '1px solid #bbf7d0' : '1px solid #fde68a',
+            }}
+          >
+            {submittedStagesCount === 1
+              ? '📦 Stage 1 (Hardware Verification) Audit Saved'
+              : submittedStagesCount === 2
+              ? '📋 Stages 1 & 2 Audit Saved'
+              : '✅ All 3 Stages (Complete Audit) Saved'}
+          </div>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: 24, fontSize: '0.95rem' }}>
             The inspection report for ATM <strong>{selectedAtm?.atmId}</strong> ({selectedAtm?.area?.name}) has been saved successfully.
           </p>
@@ -430,7 +537,7 @@ export default function AuditForm() {
                 borderRadius: 8,
               }}
             >
-              📋 View Submitted Audits
+              📋 View in Submitted Audits &rarr;
             </button>
             <button
               onClick={() => navigate('/auditor')}
@@ -787,17 +894,74 @@ export default function AuditForm() {
           )}
         </div>
 
-        <div className="stage-tracker" style={{ marginTop: 20 }}>
-          {stages.map((stage, i) => (
-            <span
-              key={stage.stageId}
-              className={
-                i === stageIndex ? 'stage-pill active' : i < stageIndex ? 'stage-pill done' : 'stage-pill'
-              }
-            >
-              {i + 1}. {stage.stageName}
+        {continuingAudit && (
+          <div
+            style={{
+              marginTop: 14,
+              padding: '12px 16px',
+              borderRadius: 8,
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              color: '#1e40af',
+              fontSize: '0.88rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <span>📌</span>
+            <span>
+              <strong>Continuing Audit for ATM {selectedAtm.atmId}:</strong> Previous stage responses have been loaded. You can now complete and submit subsequent stages.
             </span>
-          ))}
+          </div>
+        )}
+
+        <div className="stage-tracker" style={{ marginTop: 20, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {stages.map((stage, i) => {
+            const isComplete = isStageComplete(stage);
+            const answeredCount = getStageAnsweredCount(stage);
+            const totalCount = stage.questions?.length || 0;
+            const isActive = i === stageIndex;
+            return (
+              <button
+                key={stage.stageId}
+                type="button"
+                onClick={() => {
+                  setError('');
+                  setStageIndex(i);
+                }}
+                className={`stage-pill ${isActive ? 'active' : isComplete ? 'done' : ''}`}
+                style={{
+                  cursor: 'pointer',
+                  border: isActive ? '2px solid var(--color-primary)' : '1px solid #cbd5e1',
+                  background: isActive ? '#eff6ff' : isComplete ? '#ecfdf5' : '#ffffff',
+                  color: isActive ? '#1d4ed8' : isComplete ? '#047857' : '#475569',
+                  padding: '7px 14px',
+                  borderRadius: 20,
+                  fontSize: '0.84rem',
+                  fontWeight: isActive ? 700 : 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>{isComplete ? '✅' : isActive ? '👉' : '⚪'}</span>
+                <span>{i + 1}. {stage.stageName}</span>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    opacity: 0.85,
+                    padding: '1px 6px',
+                    borderRadius: 10,
+                    background: 'rgba(0,0,0,0.06)',
+                  }}
+                >
+                  {answeredCount}/{totalCount}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {error && <p className="error">{error}</p>}
@@ -896,17 +1060,198 @@ export default function AuditForm() {
           style={{ display: 'none' }}
         />
 
-        <div className="actions">
-          <button className="btn-secondary" onClick={goBack} disabled={stageIndex === 0}>
-            Back
-          </button>
-          {!isLastStage ? (
-            <button onClick={goNext}>Next</button>
-          ) : (
-            <button onClick={handleSubmit} disabled={submitting}>
-              {submitting ? 'Submitting...' : 'Submit Audit'}
+        {/* Stage helper info banner */}
+        <div
+          style={{
+            marginTop: 20,
+            padding: '10px 14px',
+            borderRadius: 8,
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
+        >
+          <span style={{ fontSize: '0.84rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>💡</span>
+            <span>
+              <strong>Flexible Audit:</strong> You can submit <strong>Stage 1 (Hardware)</strong> alone, submit <strong>Stages 1 & 2</strong>, or complete all <strong>3 Stages</strong>.
+            </span>
+          </span>
+          <span
+            style={{
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              padding: '3px 8px',
+              borderRadius: 6,
+              background: isStageComplete(currentStage) ? '#dcfce7' : '#fef3c7',
+              color: isStageComplete(currentStage) ? '#15803d' : '#b45309',
+            }}
+          >
+            Current Stage: {isStageComplete(currentStage) ? 'Ready ✅' : `${getStageAnsweredCount(currentStage)} of ${currentStage.questions?.length || 0} Answered`}
+          </span>
+        </div>
+
+        <div className="actions" style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={goBack}
+              disabled={stageIndex === 0}
+            >
+              &larr; Previous Stage
             </button>
-          )}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* If on Stage 1 (Hardware) */}
+            {stageIndex === 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleSubmitStages(1)}
+                  disabled={submitting}
+                  style={{
+                    background: '#059669',
+                    color: '#ffffff',
+                    fontWeight: 600,
+                    padding: '10px 16px',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)',
+                  }}
+                  title="Submit only Stage 1 (Hardware Verification) audit for this ATM"
+                >
+                  <span>📤</span> {submitting ? 'Submitting...' : 'Submit Stage 1 Only (Hardware)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  style={{
+                    padding: '10px 18px',
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  Next: Stage 2 &rarr;
+                </button>
+              </>
+            )}
+
+            {/* If on Stage 2 (Functional) */}
+            {stageIndex === 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleSubmitStages(1)}
+                  disabled={submitting}
+                  className="btn-secondary"
+                  style={{
+                    padding: '9px 14px',
+                    fontSize: '0.85rem',
+                  }}
+                  title="Submit only Stage 1 if you do not wish to submit Stage 2"
+                >
+                  Submit Stage 1 Only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSubmitStages(2)}
+                  disabled={submitting}
+                  style={{
+                    background: '#0284c7',
+                    color: '#ffffff',
+                    fontWeight: 600,
+                    padding: '10px 16px',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(2, 132, 199, 0.2)',
+                  }}
+                >
+                  <span>📤</span> {submitting ? 'Submitting...' : 'Submit Stages 1 & 2'}
+                </button>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  style={{
+                    padding: '10px 18px',
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  Next: Stage 3 &rarr;
+                </button>
+              </>
+            )}
+
+            {/* If on Stage 3 (Network / Last stage) */}
+            {stageIndex === 2 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleSubmitStages(2)}
+                  disabled={submitting}
+                  className="btn-secondary"
+                  style={{
+                    padding: '9px 14px',
+                    fontSize: '0.85rem',
+                  }}
+                  title="Submit Stages 1 & 2 if Stage 3 is not ready"
+                >
+                  Submit Stages 1 & 2 Only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSubmitStages(3)}
+                  disabled={submitting}
+                  style={{
+                    background: '#16a34a',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    padding: '10px 20px',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(22, 163, 74, 0.25)',
+                  }}
+                >
+                  <span>✅</span> {submitting ? 'Submitting...' : 'Submit Full Audit (All 3 Stages)'}
+                </button>
+              </>
+            )}
+
+            {/* Fallback for any other stage count */}
+            {stageIndex > 2 && (
+              <button
+                type="button"
+                onClick={() => handleSubmitStages(stages.length)}
+                disabled={submitting}
+              >
+                {submitting ? 'Submitting...' : 'Submit Audit'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

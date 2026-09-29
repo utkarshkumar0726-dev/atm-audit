@@ -32,10 +32,10 @@ function validateStages(stages) {
   return null;
 }
 
-// POST /api/audits - auditor submits a completed audit form
+// POST /api/audits - auditor submits a completed or partial audit form (Stage 1 alone, 1 & 2, or all 3)
 router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
   try {
-    const { atmId, area, photos, stages } = req.body;
+    const { atmId, area, photos, stages, auditId } = req.body;
 
     if (!atmId || !atmId.trim()) {
       return res.status(400).json({ message: 'atmId is required' });
@@ -54,13 +54,39 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
       return res.status(400).json({ message: validationError });
     }
 
-    const audit = await Audit.create({
-      atmId: atmId.trim(),
-      area: area.trim(),
-      auditor: req.user.id,
-      photos,
-      stages,
-    });
+    let audit = null;
+    let isUpdate = false;
+
+    // If auditId is provided or an existing partial audit exists for this ATM by this auditor, update it
+    if (auditId) {
+      audit = await Audit.findOne({ _id: auditId, auditor: req.user.id });
+    } else {
+      // Check if there is an existing audit with fewer stages that is being extended
+      const existingAudit = await Audit.findOne({
+        atmId: { $regex: new RegExp(`^${atmId.trim()}$`, 'i') },
+        auditor: req.user.id,
+      }).sort({ createdAt: -1 });
+
+      if (existingAudit && (!existingAudit.stages || existingAudit.stages.length < stages.length)) {
+        audit = existingAudit;
+      }
+    }
+
+    if (audit) {
+      isUpdate = true;
+      audit.photos = photos && photos.length ? photos : audit.photos;
+      audit.stages = stages;
+      audit.area = area.trim();
+      await audit.save();
+    } else {
+      audit = await Audit.create({
+        atmId: atmId.trim(),
+        area: area.trim(),
+        auditor: req.user.id,
+        photos,
+        stages,
+      });
+    }
 
     // Record Audit Log event for auditor action
     try {
@@ -70,6 +96,15 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
         (acc, s) => acc + (s.questions?.reduce((qAcc, q) => qAcc + (q.photos?.length || 0), 0) || 0),
         0
       ) || 0;
+
+      const action = isUpdate
+        ? 'AUDIT_STAGES_UPDATED'
+        : stages.length >= 3
+        ? 'FULL_AUDIT_SUBMITTED'
+        : stages.length === 1
+        ? 'STAGE_1_SUBMITTED'
+        : `STAGES_1_${stages.length}_SUBMITTED`;
+
       await AuditLog.create({
         audit: audit._id,
         auditor: req.user.id,
@@ -77,7 +112,7 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
         auditorUsername: req.user.username,
         atmId: audit.atmId,
         area: audit.area,
-        action: 'AUDIT_SUBMITTED',
+        action,
         photoCount: (photos?.length || 0) + questionPhotosCount,
         stageCount: stages?.length || 0,
         ip,
@@ -89,10 +124,28 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
       console.error('Failed to write audit log:', logErr);
     }
 
-    res.status(201).json(audit);
+    res.status(isUpdate ? 200 : 201).json(audit);
   } catch (err) {
-    console.error('Create audit error:', err);
+    console.error('Create/update audit error:', err);
     res.status(500).json({ message: 'Server error saving audit' });
+  }
+});
+
+// GET /api/audits/atm/:atmId - auditor fetches previous audit for an ATM to continue it
+router.get('/atm/:atmId', requireAuth, requireRole('auditor'), async (req, res) => {
+  try {
+    const audit = await Audit.findOne({
+      atmId: { $regex: new RegExp(`^${req.params.atmId.trim()}$`, 'i') },
+      auditor: req.user.id,
+    }).sort({ createdAt: -1 });
+
+    if (!audit) {
+      return res.status(404).json({ message: 'No previous audit found for this ATM' });
+    }
+    res.json(audit);
+  } catch (err) {
+    console.error('Fetch ATM audit error:', err);
+    res.status(500).json({ message: 'Server error fetching ATM audit' });
   }
 });
 
@@ -107,11 +160,11 @@ router.get('/mine', requireAuth, requireRole('auditor'), async (req, res) => {
   }
 });
 
-// GET /api/audits - admin views all audits, with auditor name + atmId populated
+// GET /api/audits - admin views all audits, with auditor name + atmId populated (stages included for stage summary)
 router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const audits = await Audit.find()
-      .select('-photos -stages')
+      .select('-photos')
       .populate('auditor', 'id name username')
       .sort({ createdAt: -1 });
     res.json(audits);

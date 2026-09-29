@@ -321,6 +321,7 @@ export default function AuditorAudits() {
               <th>ATM ID</th>
               <th>Area / Zone</th>
               <th>Submitted Date & Time</th>
+              <th>Stages Audited</th>
               <th>Photos</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
@@ -400,6 +401,30 @@ export default function AuditorAudits() {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 4,
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      background: audit.stages?.length >= 3 ? '#dcfce7' : audit.stages?.length === 2 ? '#eff6ff' : '#fef3c7',
+                      color: audit.stages?.length >= 3 ? '#15803d' : audit.stages?.length === 2 ? '#1d4ed8' : '#b45309',
+                      border: audit.stages?.length >= 3 ? '1px solid #bbf7d0' : audit.stages?.length === 2 ? '1px solid #bfdbfe' : '1px solid #fde68a',
+                    }}
+                  >
+                    {audit.stages?.length >= 3
+                      ? '✅ 3/3 Stages'
+                      : audit.stages?.length === 2
+                      ? '📋 Stages 1 & 2'
+                      : audit.stages?.length === 1
+                      ? '📦 Stage 1 (Hardware)'
+                      : `${audit.stages?.length || 0} Stages`}
+                  </span>
+                </td>
+                <td>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
                       fontSize: '0.85rem',
                       color: '#475569',
                     }}
@@ -407,22 +432,42 @@ export default function AuditorAudits() {
                     📸 {audit.photos?.length || 0} photo(s)
                   </span>
                 </td>
-                <td style={{ textAlign: 'right' }}>
-                  <button
-                    onClick={() => openAuditDetail(audit._id)}
-                    style={{
-                      padding: '6px 14px',
-                      fontSize: '0.85rem',
-                      fontWeight: 500,
-                      borderRadius: 6,
-                      background: '#f8fafc',
-                      color: 'var(--color-primary)',
-                      border: '1px solid var(--color-border)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    👁 View Details
-                  </button>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => openAuditDetail(audit._id)}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '0.82rem',
+                        fontWeight: 500,
+                        borderRadius: 6,
+                        background: '#f8fafc',
+                        color: 'var(--color-primary)',
+                        border: '1px solid var(--color-border)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      👁 View Details
+                    </button>
+                    {audit.stages && audit.stages.length < 3 && (
+                      <button
+                        onClick={() => navigate(`/audit/new?atmId=${audit.atmId}&continue=true`)}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          borderRadius: 6,
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          border: '1px solid #bfdbfe',
+                          cursor: 'pointer',
+                        }}
+                        title="Continue remaining stages for this ATM"
+                      >
+                        ➕ Continue
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -1038,10 +1083,27 @@ export default function AuditorAudits() {
                   Audit Details: {detailAudit?.atmId || 'Loading...'}
                 </h2>
                 {detailAudit && (
-                  <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                    Zone: <strong>{detailAudit.area}</strong> &bull; Submitted:{' '}
-                    {new Date(detailAudit.createdAt).toLocaleString()}
-                  </p>
+                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                      Zone: <strong>{detailAudit.area}</strong> &bull; Submitted:{' '}
+                      {new Date(detailAudit.createdAt).toLocaleString()}
+                    </p>
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        background: detailAudit.stages?.length >= 3 ? '#dcfce7' : '#eff6ff',
+                        color: detailAudit.stages?.length >= 3 ? '#15803d' : '#1d4ed8',
+                        border: detailAudit.stages?.length >= 3 ? '1px solid #bbf7d0' : '1px solid #bfdbfe',
+                      }}
+                    >
+                      {detailAudit.stages?.length >= 3
+                        ? '✅ Full Audit (3/3 Stages)'
+                        : `📦 Partial Audit (${detailAudit.stages?.length || 0}/3 Stages)`}
+                    </span>
+                  </div>
                 )}
               </div>
               <button
@@ -1215,6 +1277,47 @@ export default function AuditorAudits() {
                     );
                   })}
                 </div>
+
+                {detailAudit.stages?.length < 3 && (
+                  <div
+                    style={{
+                      marginTop: 18,
+                      padding: '12px 16px',
+                      borderRadius: 8,
+                      background: '#f8fafc',
+                      border: '1px dashed #cbd5e1',
+                      color: '#475569',
+                      fontSize: '0.86rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 10,
+                    }}
+                  >
+                    <span>
+                      ℹ️ <strong>Remaining Stages Pending:</strong> Only {detailAudit.stages?.length || 0} of 3 stages have been submitted for this ATM.
+                    </span>
+                    <button
+                      onClick={() => {
+                        closeAuditDetail();
+                        navigate(`/audit/new?atmId=${detailAudit.atmId}&continue=true`);
+                      }}
+                      style={{
+                        padding: '6px 14px',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        background: '#0284c7',
+                        color: '#ffffff',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ➕ Continue Next Stages &rarr;
+                    </button>
+                  </div>
+                )}
 
                 <div style={{ marginTop: 24, textAlign: 'right' }}>
                   <button

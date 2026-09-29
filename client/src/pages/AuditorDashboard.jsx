@@ -498,8 +498,8 @@ export default function AuditorDashboard() {
                   fontSize: '0.75rem',
                   padding: '3px 8px',
                   borderRadius: 6,
-                  background: '#dcfce7',
-                  color: '#15803d',
+                  background: auditObj?.stages?.length >= 3 ? '#dcfce7' : '#eff6ff',
+                  color: auditObj?.stages?.length >= 3 ? '#15803d' : '#1d4ed8',
                   fontWeight: 700,
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -507,7 +507,13 @@ export default function AuditorDashboard() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                ✓ Audited
+                {auditObj?.stages?.length >= 3
+                  ? '✓ Complete Audit'
+                  : auditObj?.stages?.length === 2
+                  ? '📋 Stages 1 & 2'
+                  : auditObj?.stages?.length === 1
+                  ? '📦 Stage 1 (Hardware)'
+                  : '✓ Audited'}
               </span>
             ) : (
               <span
@@ -552,8 +558,22 @@ export default function AuditorDashboard() {
 
           {/* Audited timestamp note if audited */}
           {isAudited && (auditObj?.createdAt || atm.lastAuditedAt) && (
-            <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: 6, fontWeight: 500 }}>
-              Audited on: {new Date(auditObj?.createdAt || atm.lastAuditedAt).toLocaleDateString()}
+            <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: 6, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span>Audited on: {new Date(auditObj?.createdAt || atm.lastAuditedAt).toLocaleDateString()}</span>
+              {auditObj?.stages && (
+                <span
+                  style={{
+                    padding: '1px 6px',
+                    borderRadius: 4,
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    background: auditObj.stages.length >= 3 ? '#dcfce7' : '#fef3c7',
+                    color: auditObj.stages.length >= 3 ? '#15803d' : '#b45309',
+                  }}
+                >
+                  {auditObj.stages.length >= 3 ? '✅ 3/3 Stages' : `📦 Stage ${auditObj.stages.length}/3`}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -561,26 +581,51 @@ export default function AuditorDashboard() {
         {/* Card Footer Actions */}
         <div style={{ display: 'flex', gap: 8, marginTop: 8, paddingTop: 10, borderTop: '1px solid #f1f5f9', alignItems: 'center' }}>
           {isAudited ? (
-            <button
-              onClick={() => openAuditReport(atm.atmId)}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                borderRadius: 8,
-                background: '#ecfdf5',
-                color: '#047857',
-                border: '1px solid #a7f3d0',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-              }}
-            >
-              👁 View Report
-            </button>
+            <>
+              <button
+                onClick={() => openAuditReport(atm.atmId)}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  borderRadius: 8,
+                  background: '#ecfdf5',
+                  color: '#047857',
+                  border: '1px solid #a7f3d0',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                }}
+              >
+                👁 View Report
+              </button>
+              {auditObj?.stages && auditObj.stages.length < 3 && (
+                <button
+                  onClick={() => navigate(`/audit/new?atmId=${atm.atmId}&continue=true`)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 10px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    background: '#eff6ff',
+                    color: '#1d4ed8',
+                    border: '1px solid #bfdbfe',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                  }}
+                  title="Complete remaining stages for this ATM"
+                >
+                  ➕ Next Stages &rarr;
+                </button>
+              )}
+            </>
           ) : (
             <button
               onClick={() => navigate(`/audit/new?atmId=${atm.atmId}`)}

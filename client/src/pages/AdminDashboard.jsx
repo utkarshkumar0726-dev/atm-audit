@@ -47,16 +47,39 @@ export default function AdminDashboard() {
                   <th>Area</th>
                   <th>Auditor</th>
                   <th>Submitted At</th>
+                  <th>Stages Audited</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {audits.map((audit) => (
                   <tr key={audit._id}>
-                    <td>{audit.atmId}</td>
+                    <td><strong>{audit.atmId}</strong></td>
                     <td>{audit.area}</td>
                     <td>{audit.auditor?.name}</td>
                     <td>{new Date(audit.createdAt).toLocaleString()}</td>
+                    <td>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: audit.stages?.length >= 3 ? '#dcfce7' : audit.stages?.length === 2 ? '#eff6ff' : '#fef3c7',
+                          color: audit.stages?.length >= 3 ? '#15803d' : audit.stages?.length === 2 ? '#1d4ed8' : '#b45309',
+                          border: audit.stages?.length >= 3 ? '1px solid #bbf7d0' : audit.stages?.length === 2 ? '1px solid #bfdbfe' : '1px solid #fde68a',
+                        }}
+                      >
+                        {audit.stages?.length >= 3
+                          ? '✅ 3/3 Stages'
+                          : audit.stages?.length === 2
+                          ? '📋 Stages 1 & 2'
+                          : audit.stages?.length === 1
+                          ? '📦 Stage 1 (Hardware)'
+                          : `${audit.stages?.length || 0} Stages`}
+                      </span>
+                    </td>
                     <td>
                       <Link to={`/admin/audits/${audit._id}`}>View</Link>
                     </td>
