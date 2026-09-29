@@ -188,6 +188,13 @@ router.get('/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ message: 'Forbidden: You can only view audits you conducted' });
     }
 
+    res.json(audit);
+  } catch (err) {
+    console.error('Fetch audit detail error:', err);
+    res.status(500).json({ message: 'Server error fetching audit' });
+  }
+});
+
 // DELETE /api/audits/:id - admin deletes an audit
 router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   try {
