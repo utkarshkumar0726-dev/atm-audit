@@ -188,10 +188,43 @@ router.get('/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ message: 'Forbidden: You can only view audits you conducted' });
     }
 
-    res.json(audit);
+// DELETE /api/audits/:id - admin deletes an audit
+router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const audit = await Audit.findById(req.params.id);
+    if (!audit) {
+      return res.status(404).json({ message: 'Audit not found' });
+    }
+
+    // Log the deletion in AuditLog
+    try {
+      const ip = getClientIp(req);
+      const { device, browser } = parseUserAgent(req.headers['user-agent']);
+      await AuditLog.create({
+        audit: audit._id,
+        auditor: req.user.id,
+        auditorName: `${req.user.name} (Admin)`,
+        auditorUsername: req.user.username,
+        atmId: audit.atmId,
+        area: audit.area,
+        action: 'AUDIT_DELETED',
+        photoCount: audit.photos?.length || 0,
+        stageCount: audit.stages?.length || 0,
+        ip,
+        userAgent: req.headers['user-agent'] || '',
+        device,
+        browser,
+      });
+    } catch (logErr) {
+      console.error('Failed to log audit deletion:', logErr);
+    }
+
+    await Audit.findByIdAndDelete(req.params.id);
+
+    res.json({ message: `Audit for ATM ${audit.atmId} deleted successfully` });
   } catch (err) {
-    console.error('Fetch audit detail error:', err);
-    res.status(500).json({ message: 'Server error fetching audit' });
+    console.error('Delete audit error:', err);
+    res.status(500).json({ message: 'Server error deleting audit' });
   }
 });
 
