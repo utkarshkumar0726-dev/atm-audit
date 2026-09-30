@@ -1,8 +1,9 @@
-// Robust Client-Side Persistent Draft Storage for ATM Audits
-// Uses IndexedDB as primary storage (hundreds of MBs capacity) so that
-// high-resolution photos, question answers, reasons, and state are preserved
-// across browser refreshes, tab closures, and app restarts without running
-// into localStorage's 5MB quota limit.
+// Robust Client + Cloud Persistent Draft Storage for ATM Audits
+// 1. Uses IndexedDB locally (hundreds of MBs capacity) for instantaneous offline & refresh recovery.
+// 2. Syncs with MongoDB Server (/api/audits/draft) so that photos taken on a phone
+//    are instantly accessible when logging in on a laptop/desktop with the same auditor account!
+
+import api from '../api/client';
 
 const DB_NAME = 'AtmAuditDraftDB';
 const DB_VERSION = 1;
@@ -38,48 +39,70 @@ function getStorageKeys(userId, atmId) {
 }
 
 /**
- * Save audit draft to IndexedDB (and localStorage as secondary fallback).
+ * Save audit draft to local IndexedDB and sync to cloud server (MongoDB).
  */
 export async function saveDraftToStorage(userId, draft, atmId) {
   if (!userId || !draft) return false;
-  const keys = getStorageKeys(userId, atmId || draft.selectedAtm?.atmId);
+  const targetAtmId = (atmId || draft.selectedAtm?.atmId || '').trim();
+  const keys = getStorageKeys(userId, targetAtmId);
 
   const payload = {
     ...draft,
     savedAt: new Date().toISOString(),
   };
 
+  // 1. Save locally in IndexedDB (instant, zero delay)
+  let localSaved = false;
   try {
     const db = await openDB();
     await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
-      // Save under both specific ATM key and active draft key
       keys.forEach((k) => store.put(payload, k));
       tx.oncomplete = () => resolve(true);
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(new Error('Transaction aborted'));
     });
-    return true;
+    localSaved = true;
   } catch (err) {
     console.warn('IndexedDB save failed, trying localStorage fallback:', err);
     try {
       localStorage.setItem(keys[0], JSON.stringify(payload));
-      return true;
+      localSaved = true;
     } catch (lsErr) {
-      console.warn('localStorage fallback also failed (likely quota exceeded):', lsErr);
-      return false;
+      console.warn('localStorage fallback failed:', lsErr);
     }
   }
+
+  // 2. Sync to Server (MongoDB) for cross-device support (Phone <-> Laptop)
+  try {
+    await api.post('/audits/draft', {
+      selectedAtm: draft.selectedAtm,
+      photos: draft.photos || [],
+      stages: draft.stages || [],
+      stageIndex: draft.stageIndex || 0,
+      started: !!draft.started,
+      existingAuditId: draft.existingAuditId || null,
+      continuingAudit: !!draft.continuingAudit,
+      atmId: targetAtmId,
+      savedAt: payload.savedAt,
+    });
+  } catch (cloudErr) {
+    console.warn('Cloud draft sync note (draft safely saved locally):', cloudErr?.response?.data || cloudErr?.message);
+  }
+
+  return localSaved;
 }
 
 /**
- * Load draft from IndexedDB, falling back to localStorage.
+ * Load draft from local IndexedDB and cloud MongoDB, returning the latest version.
  */
 export async function loadDraftFromStorage(userId, atmId) {
   if (!userId) return null;
   const keys = getStorageKeys(userId, atmId);
 
+  // 1. Load local draft from IndexedDB
+  let localDraft = null;
   try {
     const db = await openDB();
     for (const key of keys) {
@@ -94,41 +117,87 @@ export async function loadDraftFromStorage(userId, atmId) {
           resolve(null);
         }
       });
-      if (draft) return draft;
+      if (draft) {
+        localDraft = draft;
+        break;
+      }
     }
   } catch (err) {
-    console.warn('IndexedDB load failed, falling back to localStorage:', err);
+    console.warn('IndexedDB load failed:', err);
   }
 
-  // Fallback to localStorage
-  for (const key of keys) {
+  if (!localDraft) {
+    for (const key of keys) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          localDraft = JSON.parse(raw);
+          break;
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // 2. Fetch from Cloud Server (MongoDB)
+  let serverDraft = null;
+  try {
+    const res = await api.get('/audits/draft', {
+      params: atmId ? { atmId } : {},
+    });
+    if (res.data?.draft) {
+      serverDraft = res.data.draft;
+    }
+  } catch (cloudErr) {
+    console.warn('Server draft fetch note:', cloudErr?.message);
+  }
+
+  // 3. Resolve which draft is newer
+  if (serverDraft && localDraft) {
+    const serverTime = new Date(serverDraft.savedAt || serverDraft.updatedAt || 0).getTime();
+    const localTime = new Date(localDraft.savedAt || 0).getTime();
+
+    // If server draft is newer (e.g. photos uploaded from phone 2 minutes ago), use server draft
+    if (serverTime >= localTime) {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        keys.forEach((k) => store.put(serverDraft, k));
+      } catch {
+        // ignore
+      }
+      return { ...serverDraft, isFromCloud: true };
+    }
+    return localDraft;
+  }
+
+  if (serverDraft) {
+    // Laptop had no local draft yet, but user took photos on mobile!
     try {
-      const raw = localStorage.getItem(key);
-      if (raw) return JSON.parse(raw);
+      const db = await openDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      keys.forEach((k) => store.put(serverDraft, k));
     } catch {
       // ignore
     }
+    return { ...serverDraft, isFromCloud: true };
   }
 
-  // Also check old legacy key format
-  try {
-    const legacyRaw = localStorage.getItem(`atm-audit-draft-${userId}`);
-    if (legacyRaw) return JSON.parse(legacyRaw);
-  } catch {
-    // ignore
-  }
-
-  return null;
+  return localDraft;
 }
 
 /**
- * Clear draft from IndexedDB and localStorage after successful submit or manual reset.
+ * Clear draft from local IndexedDB, localStorage, and cloud MongoDB.
  */
 export async function clearDraftFromStorage(userId, atmId) {
   if (!userId) return;
   const keys = getStorageKeys(userId, atmId);
   keys.push(`atm-audit-draft-${userId}`);
 
+  // Clear local IndexedDB
   try {
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -144,6 +213,7 @@ export async function clearDraftFromStorage(userId, atmId) {
     // ignore
   }
 
+  // Clear localStorage
   keys.forEach((k) => {
     try {
       localStorage.removeItem(k);
@@ -151,4 +221,13 @@ export async function clearDraftFromStorage(userId, atmId) {
       // ignore
     }
   });
+
+  // Clear from MongoDB cloud server
+  try {
+    await api.delete('/audits/draft', {
+      params: atmId ? { atmId } : {},
+    });
+  } catch (cloudErr) {
+    console.warn('Cloud draft delete note:', cloudErr?.message);
+  }
 }

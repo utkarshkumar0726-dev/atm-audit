@@ -1,5 +1,5 @@
 const express = require('express');
-const { Audit, User, AuditLog } = require('../models');
+const { Audit, User, AuditLog, AuditDraft } = require('../models');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { parseUserAgent, getClientIp } = require('../utils/agentParser');
 
@@ -124,10 +124,114 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
       console.error('Failed to write audit log:', logErr);
     }
 
+    // Clean up draft from MongoDB since audit has been submitted
+    try {
+      await AuditDraft.deleteMany({
+        auditor: req.user.id,
+        $or: [
+          { atmId: { $regex: new RegExp(`^${atmId.trim()}$`, 'i') } },
+          { atmId: '' },
+        ],
+      });
+    } catch (draftErr) {
+      console.warn('Failed to clean up draft after audit submit:', draftErr);
+    }
+
     res.status(isUpdate ? 200 : 201).json(audit);
   } catch (err) {
     console.error('Create/update audit error:', err);
     res.status(500).json({ message: 'Server error saving audit' });
+  }
+});
+
+// GET /api/audits/draft - auditor fetches in-progress draft (optionally filtered by ?atmId=...)
+router.get('/draft', requireAuth, requireRole('auditor'), async (req, res) => {
+  try {
+    const { atmId } = req.query;
+    let draft = null;
+
+    if (atmId && atmId.trim()) {
+      draft = await AuditDraft.findOne({
+        auditor: req.user.id,
+        atmId: { $regex: new RegExp(`^${atmId.trim()}$`, 'i') },
+      }).sort({ updatedAt: -1 });
+    }
+
+    if (!draft) {
+      draft = await AuditDraft.findOne({ auditor: req.user.id }).sort({ updatedAt: -1 });
+    }
+
+    res.json({ draft });
+  } catch (err) {
+    console.error('Fetch draft error:', err);
+    res.status(500).json({ message: 'Server error fetching draft' });
+  }
+});
+
+// POST /api/audits/draft - auditor saves/syncs their draft to the cloud across devices
+router.post('/draft', requireAuth, requireRole('auditor'), async (req, res) => {
+  try {
+    const {
+      selectedAtm,
+      photos,
+      stages,
+      stageIndex,
+      started,
+      existingAuditId,
+      continuingAudit,
+      atmId,
+      savedAt,
+    } = req.body;
+
+    const targetAtmId = (atmId || selectedAtm?.atmId || '').trim();
+    const { device } = parseUserAgent(req.headers['user-agent']);
+
+    const updateData = {
+      auditor: req.user.id,
+      atmId: targetAtmId,
+      selectedAtm: selectedAtm || null,
+      photos: Array.isArray(photos) ? photos : [],
+      stages: Array.isArray(stages) ? stages : [],
+      stageIndex: Number.isInteger(stageIndex) ? stageIndex : 0,
+      started: !!started,
+      existingAuditId: existingAuditId || null,
+      continuingAudit: !!continuingAudit,
+      lastDevice: device || 'Web',
+      savedAt: savedAt ? new Date(savedAt) : new Date(),
+    };
+
+    // Find and update or insert
+    const query = {
+      auditor: req.user.id,
+      ...(targetAtmId ? { atmId: { $regex: new RegExp(`^${targetAtmId}$`, 'i') } } : {}),
+    };
+
+    const draft = await AuditDraft.findOneAndUpdate(
+      query,
+      { $set: updateData },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.json({ ok: true, draft });
+  } catch (err) {
+    console.error('Save draft error:', err);
+    res.status(500).json({ message: 'Server error saving draft' });
+  }
+});
+
+// DELETE /api/audits/draft - delete draft when submitted or discarded
+router.delete('/draft', requireAuth, requireRole('auditor'), async (req, res) => {
+  try {
+    const { atmId } = req.query;
+    const query = { auditor: req.user.id };
+    if (atmId && atmId.trim()) {
+      query.atmId = { $regex: new RegExp(`^${atmId.trim()}$`, 'i') };
+    }
+    await AuditDraft.deleteMany(query);
+    res.json({ ok: true, message: 'Draft cleared' });
+  } catch (err) {
+    console.error('Clear draft error:', err);
+    res.status(500).json({ message: 'Server error clearing draft' });
   }
 });
 

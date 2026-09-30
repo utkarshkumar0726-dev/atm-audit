@@ -7,6 +7,7 @@ const Assignment = require('./Assignment');
 const Audit = require('./Audit');
 const LoginLog = require('./LoginLog');
 const AuditLog = require('./AuditLog');
+const AuditDraft = require('./AuditDraft');
 
 module.exports = {
   User,
@@ -18,5 +19,6 @@ module.exports = {
   Audit,
   LoginLog,
   AuditLog,
+  AuditDraft,
 };
 

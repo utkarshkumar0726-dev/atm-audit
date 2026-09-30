@@ -114,6 +114,7 @@ export default function AuditForm() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [draftRestored, setDraftRestored] = useState(false);
+  const [draftSource, setDraftSource] = useState('');
 
   useEffect(() => {
     const preselectedAtmId = searchParams.get('atmId');
@@ -137,6 +138,7 @@ export default function AuditForm() {
           if (draft.existingAuditId) setExistingAuditId(draft.existingAuditId);
           if (draft.continuingAudit) setContinuingAudit(draft.continuingAudit);
           setDraftRestored(true);
+          setDraftSource(draft.lastDevice || (draft.isFromCloud ? 'Cloud' : 'Device'));
           if (draft.savedAt) setLastSavedAt(new Date(draft.savedAt));
         } else if (preselectedAtmId) {
           const match = atmsRes.data.find(
@@ -522,6 +524,7 @@ export default function AuditForm() {
     setSubmittedStagesCount(3);
     setSuccess(false);
     setDraftRestored(false);
+    setDraftSource('');
     setLastSavedAt(null);
   }
 
@@ -649,9 +652,9 @@ export default function AuditForm() {
                   gap: 4,
                   fontWeight: 600,
                 }}
-                title="Your progress and photos are cached locally in this browser"
+                title="Synced across your phone and laptop in real-time"
               >
-                {savingDraft ? '🔄 Saving draft...' : `💾 Saved locally (${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`}
+                {savingDraft ? '🔄 Syncing draft...' : `☁️ Synced (${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`}
               </span>
             )}
           </div>
@@ -667,24 +670,30 @@ export default function AuditForm() {
             <div
               style={{
                 marginBottom: 16,
-                padding: '10px 14px',
-                borderRadius: 8,
+                padding: '12px 16px',
+                borderRadius: 10,
                 background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
+                border: '1.5px solid #86efac',
                 color: '#166534',
-                fontSize: '0.86rem',
+                fontSize: '0.88rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 flexWrap: 'wrap',
-                gap: 10,
+                gap: 12,
+                boxShadow: '0 2px 6px rgba(22, 101, 52, 0.06)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>🛡️</span>
-                <span>
-                  <strong>Unsaved draft restored:</strong> Your selected ATM & photos were retrieved from local storage.
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: '1.4rem' }}>{draftSource?.toLowerCase().includes('mobile') ? '📱' : '☁️'}</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>
+                    Draft Synced {draftSource ? `from ${draftSource}` : 'Across Devices'}
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: '#15803d', marginTop: 2 }}>
+                    ATM <strong>{selectedAtm?.atmId}</strong> ({photos.length} photo{photos.length !== 1 ? 's' : ''} attached) has been restored. You can continue seamlessly on this device!
+                  </div>
+                </div>
               </div>
               <button
                 type="button"
@@ -693,7 +702,7 @@ export default function AuditForm() {
                   background: '#ffffff',
                   border: '1px solid #dc2626',
                   color: '#dc2626',
-                  padding: '4px 10px',
+                  padding: '5px 12px',
                   borderRadius: 6,
                   fontSize: '0.78rem',
                   cursor: 'pointer',
@@ -961,9 +970,9 @@ export default function AuditForm() {
                 gap: 4,
                 fontWeight: 600,
               }}
-              title="Your progress, questions, and defect photos are cached locally in this browser"
+              title="Synced across your phone and laptop in real-time"
             >
-              {savingDraft ? '🔄 Saving draft...' : `💾 Saved locally (${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`}
+              {savingDraft ? '🔄 Syncing draft...' : `☁️ Synced (${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`}
             </span>
           )}
         </div>
@@ -977,24 +986,30 @@ export default function AuditForm() {
           <div
             style={{
               marginBottom: 16,
-              padding: '10px 14px',
-              borderRadius: 8,
+              padding: '12px 16px',
+              borderRadius: 10,
               background: '#f0fdf4',
-              border: '1px solid #bbf7d0',
+              border: '1.5px solid #86efac',
               color: '#166534',
-              fontSize: '0.86rem',
+              fontSize: '0.88rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               flexWrap: 'wrap',
-              gap: 10,
+              gap: 12,
+              boxShadow: '0 2px 6px rgba(22, 101, 52, 0.06)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>🛡️</span>
-              <span>
-                <strong>Unsaved draft restored:</strong> Questions, answers, reasons & defect photos were preserved from local storage.
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: '1.4rem' }}>{draftSource?.toLowerCase().includes('mobile') ? '📱' : '☁️'}</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>
+                  Draft Synced {draftSource ? `from ${draftSource}` : 'Across Devices'}
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#15803d', marginTop: 2 }}>
+                  ATM <strong>{selectedAtm?.atmId}</strong> questions, answers, reasons & {photos.length} photo{photos.length !== 1 ? 's' : ''} loaded. You can continue seamlessly on this device!
+                </div>
+              </div>
             </div>
             <button
               type="button"
@@ -1003,7 +1018,7 @@ export default function AuditForm() {
                 background: '#ffffff',
                 border: '1px solid #dc2626',
                 color: '#dc2626',
-                padding: '4px 10px',
+                padding: '5px 12px',
                 borderRadius: 6,
                 fontSize: '0.78rem',
                 cursor: 'pointer',

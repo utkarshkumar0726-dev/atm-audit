@@ -146,16 +146,21 @@ export default function AuditorDashboard() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState('');
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const [activeDraft, setActiveDraft] = useState(null);
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
       api.get('/audits/mine'),
       api.get('/atms/mine'),
+      api.get('/audits/draft').catch(() => ({ data: { draft: null } })),
     ])
-      .then(([auditsRes, atmsRes]) => {
+      .then(([auditsRes, atmsRes, draftRes]) => {
         setAudits(auditsRes.data || []);
         setAssignedAtms(atmsRes.data || []);
+        if (draftRes.data?.draft?.selectedAtm) {
+          setActiveDraft(draftRes.data.draft);
+        }
       })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load assigned ATMs');
@@ -639,9 +644,13 @@ export default function AuditorDashboard() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
+                background: activeDraft?.selectedAtm?.atmId?.toLowerCase() === key ? '#2563eb' : 'var(--color-primary)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: activeDraft?.selectedAtm?.atmId?.toLowerCase() === key ? '0 2px 6px rgba(37, 99, 235, 0.3)' : undefined,
               }}
             >
-              Audit This ATM &rarr;
+              {activeDraft?.selectedAtm?.atmId?.toLowerCase() === key ? '📱 Continue Draft' : 'Audit This ATM'} &rarr;
             </button>
           )}
 
@@ -746,6 +755,82 @@ export default function AuditorDashboard() {
             </button>
           </div>
         </div>
+
+        {/* Active In-Progress Cloud Draft Alert */}
+        {activeDraft && activeDraft.selectedAtm && (
+          <div
+            style={{
+              marginBottom: 24,
+              padding: '16px 20px',
+              borderRadius: 12,
+              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+              border: '1.5px solid #93c5fd',
+              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.09)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 14,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              {activeDraft.photos?.[0] ? (
+                <img
+                  src={activeDraft.photos[0]}
+                  alt="Draft ATM"
+                  style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', border: '2px solid #ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+                />
+              ) : (
+                <div style={{ fontSize: '2.2rem' }}>📱</div>
+              )}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 800, color: '#1e3a8a', fontSize: '1.05rem' }}>
+                    In-Progress Audit: ATM {activeDraft.selectedAtm?.atmId}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                      background: '#2563eb',
+                      color: '#ffffff',
+                    }}
+                  >
+                    {activeDraft.lastDevice ? `Synced from ${activeDraft.lastDevice}` : 'Synced from Phone'}
+                  </span>
+                  {activeDraft.photos?.length > 0 && (
+                    <span style={{ fontSize: '0.78rem', color: '#1d4ed8', fontWeight: 600 }}>
+                      📸 {activeDraft.photos.length} photo{activeDraft.photos.length > 1 ? 's' : ''} saved
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: '0.84rem', color: '#475569', marginTop: 4 }}>
+                  {activeDraft.selectedAtm?.area?.name || activeDraft.selectedAtm?.location} &middot; Saved{' '}
+                  {new Date(activeDraft.savedAt || activeDraft.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <button
+                onClick={() => navigate(`/audit/new?atmId=${activeDraft.selectedAtm?.atmId}`)}
+                style={{
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  padding: '9px 18px',
+                  borderRadius: 8,
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
+                }}
+              >
+                Continue Audit on this Device &rarr;
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* KPI Cards */}
         <div className="kpi-grid">
