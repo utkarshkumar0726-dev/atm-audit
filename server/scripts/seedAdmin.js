@@ -11,7 +11,7 @@ async function seedAdmin() {
     {
       name: process.env.ADMIN_NAME || 'Administrator',
       username: (process.env.ADMIN_USERNAME || 'admin').toLowerCase().trim(),
-      password: process.env.ADMIN_PASSWORD || 'admin',
+      password: process.env.ADMIN_PASSWORD || 'pass@1234',
       role: 'admin',
     },
     {
