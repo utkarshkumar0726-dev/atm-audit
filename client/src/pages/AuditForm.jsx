@@ -6,6 +6,11 @@ import Topbar from '../components/Topbar';
 import AuditorNav from '../components/AuditorNav';
 import CameraCapture from '../components/CameraCapture';
 import PhotoLightbox from '../components/PhotoLightbox';
+import {
+  saveDraftToStorage,
+  loadDraftFromStorage,
+  clearDraftFromStorage,
+} from '../utils/draftStorage';
 
 // Live in-browser camera capture needs a secure context (https, or localhost).
 // Over plain http on a LAN IP (needed so phones can reach a dev server) it's
@@ -71,38 +76,6 @@ async function compressFiles(fileList) {
 
 const MAX_ATM_RESULTS = 20;
 
-// Keeps an in-progress audit across accidental refreshes/tab closes. Best-effort:
-// wrapped in try/catch since private browsing or a full quota (lots of photos)
-// can make localStorage throw — worst case we just fall back to a blank form.
-function draftKey(userId) {
-  return `atm-audit-draft-${userId}`;
-}
-
-function loadDraft(userId) {
-  try {
-    const raw = localStorage.getItem(draftKey(userId));
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveDraft(userId, draft) {
-  try {
-    localStorage.setItem(draftKey(userId), JSON.stringify(draft));
-  } catch {
-    // ignore — progress just won't survive a refresh this time
-  }
-}
-
-function clearDraft(userId) {
-  try {
-    localStorage.removeItem(draftKey(userId));
-  } catch {
-    // ignore
-  }
-}
-
 export default function AuditForm() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -111,6 +84,7 @@ export default function AuditForm() {
   const galleryInputRef = useRef(null);
   const questionCameraInputRef = useRef(null);
   const questionGalleryInputRef = useRef(null);
+  const saveTimeoutRef = useRef(null);
   const [processingPhotos, setProcessingPhotos] = useState(false);
 
   const [loading, setLoading] = useState(true);
@@ -136,21 +110,34 @@ export default function AuditForm() {
   const [cameraTarget, setCameraTarget] = useState(null); // null | 'main' | questionId
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
 
+  // Draft persistence states
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [draftRestored, setDraftRestored] = useState(false);
+
   useEffect(() => {
-    Promise.all([api.get('/checklist'), api.get('/atms/mine')])
-      .then(([checklistRes, atmsRes]) => {
+    const preselectedAtmId = searchParams.get('atmId');
+    const isContinue = searchParams.get('continue') === 'true';
+
+    Promise.all([
+      api.get('/checklist'),
+      api.get('/atms/mine'),
+      user?.id ? loadDraftFromStorage(user.id, preselectedAtmId) : Promise.resolve(null),
+    ])
+      .then(([checklistRes, atmsRes, draft]) => {
         setChecklistStages(checklistRes.data);
         setAssignedAtms(atmsRes.data);
 
-        const draft = user?.id ? loadDraft(user.id) : null;
-        const preselectedAtmId = searchParams.get('atmId');
-
-        if (draft?.selectedAtm) {
+        if (draft && draft.selectedAtm) {
           setSelectedAtm(draft.selectedAtm);
           setPhotos(draft.photos || []);
           setStages(draft.stages?.length ? draft.stages : buildInitialStages(checklistRes.data));
           setStageIndex(draft.stageIndex || 0);
           setStarted(!!draft.started);
+          if (draft.existingAuditId) setExistingAuditId(draft.existingAuditId);
+          if (draft.continuingAudit) setContinuingAudit(draft.continuingAudit);
+          setDraftRestored(true);
+          if (draft.savedAt) setLastSavedAt(new Date(draft.savedAt));
         } else if (preselectedAtmId) {
           const match = atmsRes.data.find(
             (a) => a.atmId === preselectedAtmId || a._id === preselectedAtmId
@@ -158,7 +145,6 @@ export default function AuditForm() {
           if (match) setSelectedAtm(match);
 
           const initial = buildInitialStages(checklistRes.data);
-          const isContinue = searchParams.get('continue') === 'true';
 
           if (isContinue) {
             api
@@ -214,15 +200,68 @@ export default function AuditForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist progress so a refresh or accidental tab close doesn't lose it.
+  // Persist progress to IndexedDB with debounce so changes aren't lost on refresh/closure
   useEffect(() => {
     if (!user?.id || loading) return;
+
     if (!selectedAtm && photos.length === 0 && !started) {
-      clearDraft(user.id);
+      clearDraftFromStorage(user.id, selectedAtm?.atmId);
       return;
     }
-    saveDraft(user.id, { selectedAtm, photos, stages, stageIndex, started });
-  }, [user?.id, loading, selectedAtm, photos, stages, stageIndex, started]);
+
+    setSavingDraft(true);
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await saveDraftToStorage(
+          user.id,
+          {
+            selectedAtm,
+            photos,
+            stages,
+            stageIndex,
+            started,
+            existingAuditId,
+            continuingAudit,
+          },
+          selectedAtm?.atmId
+        );
+        setLastSavedAt(new Date());
+      } catch (err) {
+        console.warn('Auto-save draft error:', err);
+      } finally {
+        setSavingDraft(false);
+      }
+    }, 350);
+
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [user?.id, loading, selectedAtm, photos, stages, stageIndex, started, existingAuditId, continuingAudit]);
+
+  // Immediate synchronous/direct save on tab close or refresh
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (user?.id && (selectedAtm || photos.length > 0 || started)) {
+        saveDraftToStorage(
+          user.id,
+          {
+            selectedAtm,
+            photos,
+            stages,
+            stageIndex,
+            started,
+            existingAuditId,
+            continuingAudit,
+          },
+          selectedAtm?.atmId
+        );
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [user?.id, selectedAtm, photos, stages, stageIndex, started, existingAuditId, continuingAudit]);
 
   const currentStage = stages[stageIndex];
   const isLastStage = stageIndex === stages.length - 1;
@@ -456,7 +495,9 @@ export default function AuditForm() {
       }
 
       await api.post('/audits', payload);
-      if (user?.id) clearDraft(user.id);
+      if (user?.id) {
+        await clearDraftFromStorage(user.id, selectedAtm?.atmId);
+      }
       setSubmittedStagesCount(count);
       setSuccess(true);
     } catch (err) {
@@ -466,7 +507,10 @@ export default function AuditForm() {
     }
   }
 
-  function startNewAudit() {
+  async function startNewAudit() {
+    if (user?.id) {
+      await clearDraftFromStorage(user.id, selectedAtm?.atmId);
+    }
     setSelectedAtm(null);
     setAtmSearch('');
     setPhotos([]);
@@ -477,6 +521,18 @@ export default function AuditForm() {
     setContinuingAudit(false);
     setSubmittedStagesCount(3);
     setSuccess(false);
+    setDraftRestored(false);
+    setLastSavedAt(null);
+  }
+
+  async function handleDiscardDraft() {
+    if (
+      window.confirm(
+        'Are you sure you want to discard the saved draft and start fresh? All un-submitted answers and photos will be cleared.'
+      )
+    ) {
+      await startNewAudit();
+    }
   }
 
   if (loading) {
@@ -575,9 +631,30 @@ export default function AuditForm() {
     return (
       <div className="page">
         <Topbar>
-          <span className="user-chip">
-            {user?.name} <span className="role-badge">Auditor</span>
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span className="user-chip">
+              <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Auditor</span>
+            </span>
+            {lastSavedAt && (
+              <span
+                style={{
+                  fontSize: '0.78rem',
+                  padding: '3px 8px',
+                  borderRadius: 12,
+                  background: savingDraft ? '#fef3c7' : '#ecfdf5',
+                  color: savingDraft ? '#b45309' : '#047857',
+                  border: savingDraft ? '1px solid #fde68a' : '1px solid #a7f3d0',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontWeight: 600,
+                }}
+                title="Your progress and photos are cached locally in this browser"
+              >
+                {savingDraft ? '🔄 Saving draft...' : `💾 Saved locally (${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`}
+              </span>
+            )}
+          </div>
           <button className="link" onClick={logout}>
             Logout
           </button>
@@ -586,6 +663,48 @@ export default function AuditForm() {
         <AuditorNav />
 
         <div className="card wide">
+          {draftRestored && (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: '10px 14px',
+                borderRadius: 8,
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                color: '#166534',
+                fontSize: '0.86rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 10,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>🛡️</span>
+                <span>
+                  <strong>Unsaved draft restored:</strong> Your selected ATM & photos were retrieved from local storage.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #dc2626',
+                  color: '#dc2626',
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Discard & Start Fresh
+              </button>
+            </div>
+          )}
+
           <h1>Start New Audit</h1>
 
           {assignedAtms.length === 0 ? (
@@ -824,15 +943,78 @@ export default function AuditForm() {
   return (
     <div className="page">
       <Topbar>
-        <span className="user-chip">
-          <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Auditor</span>
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span className="user-chip">
+            <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Auditor</span>
+          </span>
+          {lastSavedAt && (
+            <span
+              style={{
+                fontSize: '0.78rem',
+                padding: '3px 8px',
+                borderRadius: 12,
+                background: savingDraft ? '#fef3c7' : '#ecfdf5',
+                color: savingDraft ? '#b45309' : '#047857',
+                border: savingDraft ? '1px solid #fde68a' : '1px solid #a7f3d0',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontWeight: 600,
+              }}
+              title="Your progress, questions, and defect photos are cached locally in this browser"
+            >
+              {savingDraft ? '🔄 Saving draft...' : `💾 Saved locally (${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`}
+            </span>
+          )}
+        </div>
         <button className="link" onClick={logout}>
           Logout
         </button>
       </Topbar>
 
       <div className="card wide">
+        {draftRestored && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: '10px 14px',
+              borderRadius: 8,
+              background: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              color: '#166534',
+              fontSize: '0.86rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 10,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>🛡️</span>
+              <span>
+                <strong>Unsaved draft restored:</strong> Questions, answers, reasons & defect photos were preserved from local storage.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              style={{
+                background: '#ffffff',
+                border: '1px solid #dc2626',
+                color: '#dc2626',
+                padding: '4px 10px',
+                borderRadius: 6,
+                fontSize: '0.78rem',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              Discard & Start Fresh
+            </button>
+          </div>
+        )}
+
         <div
           className="audit-meta-row"
           style={{
