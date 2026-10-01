@@ -30,12 +30,20 @@ function openDB() {
 
 function getStorageKeys(userId, atmId) {
   const normUserId = String(userId || 'anonymous').trim();
-  const keys = [`atm_audit_active_draft_${normUserId}`];
   if (atmId) {
     const normAtm = String(atmId).trim().toLowerCase();
-    keys.unshift(`atm_audit_draft_${normUserId}_${normAtm}`);
+    // When requesting a specific ATM, ONLY check keys dedicated to that ATM!
+    return [`atm_audit_draft_${normUserId}_${normAtm}`];
   }
-  return keys;
+  return [`atm_audit_active_draft_${normUserId}`];
+}
+
+function isDraftForAtm(draft, targetAtmId) {
+  if (!draft) return false;
+  if (!targetAtmId) return true;
+  const target = String(targetAtmId).trim().toLowerCase();
+  const draftAtm = String(draft.selectedAtm?.atmId || draft.atmId || '').trim().toLowerCase();
+  return draftAtm === target;
 }
 
 /**
@@ -44,7 +52,13 @@ function getStorageKeys(userId, atmId) {
 export async function saveDraftToStorage(userId, draft, atmId) {
   if (!userId || !draft) return false;
   const targetAtmId = (atmId || draft.selectedAtm?.atmId || '').trim();
-  const keys = getStorageKeys(userId, targetAtmId);
+  const normUserId = String(userId || 'anonymous').trim();
+
+  // Keys to write: specific ATM key AND active draft key
+  const writeKeys = [`atm_audit_active_draft_${normUserId}`];
+  if (targetAtmId) {
+    writeKeys.unshift(`atm_audit_draft_${normUserId}_${targetAtmId.toLowerCase()}`);
+  }
 
   const payload = {
     ...draft,
@@ -58,7 +72,7 @@ export async function saveDraftToStorage(userId, draft, atmId) {
     await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
-      keys.forEach((k) => store.put(payload, k));
+      writeKeys.forEach((k) => store.put(payload, k));
       tx.oncomplete = () => resolve(true);
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(new Error('Transaction aborted'));
@@ -67,7 +81,7 @@ export async function saveDraftToStorage(userId, draft, atmId) {
   } catch (err) {
     console.warn('IndexedDB save failed, trying localStorage fallback:', err);
     try {
-      localStorage.setItem(keys[0], JSON.stringify(payload));
+      localStorage.setItem(writeKeys[0], JSON.stringify(payload));
       localSaved = true;
     } catch (lsErr) {
       console.warn('localStorage fallback failed:', lsErr);
@@ -117,7 +131,7 @@ export async function loadDraftFromStorage(userId, atmId) {
           resolve(null);
         }
       });
-      if (draft) {
+      if (draft && isDraftForAtm(draft, atmId)) {
         localDraft = draft;
         break;
       }
@@ -131,8 +145,11 @@ export async function loadDraftFromStorage(userId, atmId) {
       try {
         const raw = localStorage.getItem(key);
         if (raw) {
-          localDraft = JSON.parse(raw);
-          break;
+          const parsed = JSON.parse(raw);
+          if (isDraftForAtm(parsed, atmId)) {
+            localDraft = parsed;
+            break;
+          }
         }
       } catch {
         // ignore
@@ -146,7 +163,7 @@ export async function loadDraftFromStorage(userId, atmId) {
     const res = await api.get('/audits/draft', {
       params: atmId ? { atmId } : {},
     });
-    if (res.data?.draft) {
+    if (res.data?.draft && isDraftForAtm(res.data.draft, atmId)) {
       serverDraft = res.data.draft;
     }
   } catch (cloudErr) {

@@ -155,9 +155,7 @@ router.get('/draft', requireAuth, requireRole('auditor'), async (req, res) => {
         auditor: req.user.id,
         atmId: { $regex: new RegExp(`^${atmId.trim()}$`, 'i') },
       }).sort({ updatedAt: -1 });
-    }
-
-    if (!draft) {
+    } else {
       draft = await AuditDraft.findOne({ auditor: req.user.id }).sort({ updatedAt: -1 });
     }
 

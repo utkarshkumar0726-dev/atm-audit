@@ -129,7 +129,15 @@ export default function AuditForm() {
         setChecklistStages(checklistRes.data);
         setAssignedAtms(atmsRes.data);
 
-        if (draft && draft.selectedAtm) {
+        const reqAtm = preselectedAtmId ? String(preselectedAtmId).trim().toLowerCase() : null;
+        const draftAtm = draft?.selectedAtm?.atmId ? String(draft.selectedAtm.atmId).trim().toLowerCase() : null;
+
+        // Draft is ONLY valid if:
+        // 1. No specific ATM was requested in URL (loaded /audit/new directly)
+        // 2. OR the draft belongs to the EXACT preselected ATM!
+        const isDraftValid = Boolean(draft && draft.selectedAtm && (!reqAtm || draftAtm === reqAtm));
+
+        if (isDraftValid) {
           setSelectedAtm(draft.selectedAtm);
           setPhotos(draft.photos || []);
           setStages(draft.stages?.length ? draft.stages : buildInitialStages(checklistRes.data));
@@ -142,9 +150,16 @@ export default function AuditForm() {
           if (draft.savedAt) setLastSavedAt(new Date(draft.savedAt));
         } else if (preselectedAtmId) {
           const match = atmsRes.data.find(
-            (a) => a.atmId === preselectedAtmId || a._id === preselectedAtmId
+            (a) => a.atmId?.toLowerCase() === reqAtm || a._id === preselectedAtmId
           );
           if (match) setSelectedAtm(match);
+          setPhotos([]);
+          setStarted(false);
+          setExistingAuditId(null);
+          setContinuingAudit(false);
+          setDraftRestored(false);
+          setDraftSource('');
+          setLastSavedAt(null);
 
           const initial = buildInitialStages(checklistRes.data);
 
@@ -194,13 +209,19 @@ export default function AuditForm() {
             setStages(initial);
           }
         } else {
+          setPhotos([]);
+          setStarted(false);
+          setSelectedAtm(null);
+          setDraftRestored(false);
+          setDraftSource('');
+          setLastSavedAt(null);
           setStages(buildInitialStages(checklistRes.data));
         }
       })
       .catch((err) => setLoadError(err.response?.data?.message || 'Failed to load audit setup'))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
 
   // Persist progress to IndexedDB with debounce so changes aren't lost on refresh/closure
   useEffect(() => {
@@ -281,10 +302,44 @@ export default function AuditForm() {
     return list.slice(0, MAX_ATM_RESULTS);
   }, [assignedAtms, atmSearch]);
 
-  function selectAtm(atm) {
+  async function selectAtm(atm) {
+    if (!atm) return;
+    const newAtmId = atm.atmId;
     setSelectedAtm(atm);
     setAtmSearch('');
     setAtmDropdownOpen(false);
+    setError('');
+
+    // Check if this newly selected ATM already has a saved draft
+    if (user?.id) {
+      const existingDraft = await loadDraftFromStorage(user.id, newAtmId);
+      if (
+        existingDraft &&
+        existingDraft.selectedAtm?.atmId?.toLowerCase() === newAtmId.toLowerCase()
+      ) {
+        setPhotos(existingDraft.photos || []);
+        setStages(existingDraft.stages?.length ? existingDraft.stages : buildInitialStages(checklistStages));
+        setStageIndex(existingDraft.stageIndex || 0);
+        setStarted(!!existingDraft.started);
+        if (existingDraft.existingAuditId) setExistingAuditId(existingDraft.existingAuditId);
+        if (existingDraft.continuingAudit) setContinuingAudit(existingDraft.continuingAudit);
+        setDraftRestored(true);
+        setDraftSource(existingDraft.lastDevice || (existingDraft.isFromCloud ? 'Cloud' : 'Device'));
+        if (existingDraft.savedAt) setLastSavedAt(new Date(existingDraft.savedAt));
+        return;
+      }
+    }
+
+    // Otherwise, start fresh for this newly picked ATM
+    setPhotos([]);
+    setStages(buildInitialStages(checklistStages));
+    setStageIndex(0);
+    setStarted(false);
+    setExistingAuditId(null);
+    setContinuingAudit(false);
+    setDraftRestored(false);
+    setDraftSource('');
+    setLastSavedAt(null);
   }
 
   function closeAtmDropdownSoon() {
