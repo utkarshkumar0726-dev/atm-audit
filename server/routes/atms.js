@@ -518,4 +518,25 @@ router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   }
 });
 
+// PATCH /api/atms/:id/contact - auditor adds an additional contact
+router.patch('/:id/contact', requireAuth, async (req, res) => {
+  try {
+    const { newName, newPhone } = req.body;
+    if (!newName || !newPhone) {
+      return res.status(400).json({ message: 'Name and phone are required' });
+    }
+
+    const atm = await Atm.findById(req.params.id);
+    if (!atm) return res.status(404).json({ message: 'ATM not found' });
+
+    atm.additionalContacts.push({ name: newName.trim(), phone: newPhone.trim() });
+    await atm.save();
+    
+    res.json({ message: 'Additional contact added successfully', additionalContacts: atm.additionalContacts });
+  } catch (err) {
+    console.error('Update ATM contact error:', err);
+    res.status(500).json({ message: 'Server error adding contact info' });
+  }
+});
+
 module.exports = router;

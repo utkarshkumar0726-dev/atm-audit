@@ -1,0 +1,977 @@
+[
+  {
+    "_id": "6abdd5e75a521a988d79a536",
+    "auditor": "6ab360773a16ca44b477fea4",
+    "__v": 0,
+    "atmId": "SPSBV003801",
+    "continuingAudit": false,
+    "createdAt": "2026-10-01T03:39:19.506Z",
+    "existingAuditId": null,
+    "lastDevice": "Desktop",
+    "photos": [],
+    "savedAt": "2026-10-01T04:32:38.889Z",
+    "selectedAtm": {
+      "_id": "6ab0f1195c7e9b25b574666f",
+      "slNo": 4,
+      "atmId": "SPSBV003801",
+      "area": {
+        "_id": "6ab0f1195c7e9b25b5746668",
+        "name": "DELHI-II"
+      },
+      "vendor": "Provigil",
+      "bic": "D0038",
+      "branchName": "TILAK NAGAR NEW DELHI",
+      "inchargeName": "GURINDERBIR SINGH RANDHAWA",
+      "inchargeDesig": "CHIEF MANAGER- IN CHARGE",
+      "inchargeContact": "9781960007",
+      "address": "43-44,NEW MARKET,TILAK NAGAR,NEW DELHI",
+      "pincode": "",
+      "state": "DELHI",
+      "siteType": "ONSITE",
+      "location": "TILAK NAGAR NEW DELHI",
+      "createdAt": "2026-09-21T08:55:53.736Z",
+      "updatedAt": "2026-09-22T10:50:28.199Z",
+      "__v": 1,
+      "deviceId": "PNSBP1A1646",
+      "link": "https://assets-ap1.iviscloud.net:8443/sitemanager-archive/SMI/52826/20260715165438_PSB_Tilak_Nagar_new_market_page-0001.jpg",
+      "links": [
+        "https://assets-ap1.iviscloud.net:8443/sitemanager-archive/SMI/52826/20260715165438_PSB_Tilak_Nagar_new_market_page-0001.jpg",
+        "https://assets-ap1.iviscloud.net:8443/sitemanager-archive/SMI/52826/20260715165500_PSB_Tilak_Nagar_new_market_page-0002.jpg"
+      ],
+      "isAudited": false,
+      "lastAuditedAt": null
+    },
+    "stageIndex": 0,
+    "stages": [
+      {
+        "stageId": "6ab11c228e311fa7a5a8cb6f",
+        "stageName": "A. HARDWARE VERIFICATION",
+        "questions": [
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb70",
+            "questionText": "[HW-01] Installed equipment matches the approved site list / BoM - make, model, serial no. and quantity (Verify: Physical count vs BoM)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb71",
+            "questionText": "[HW-02] CCTV cameras cover ATM room, back room / UPS cabinet, front lobby and front entrance (Verify: Site walk-through; live feed)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb72",
+            "questionText": "[HW-03] Cameras support H.265 (or better) compression; edge analytics (motion / tamper / intrusion) where offered (Verify: Datasheet; camera config page)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb73",
+            "questionText": "[HW-04] No camera or sensor is positioned to capture customer credentials (PIN pad / screen) (Verify: Check field of view of each camera)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb74",
+            "questionText": "[HW-05] NVR placed in back room, physically secured, storage sized for minimum 180 days recording (Verify: Inspect NVR; storage calculation)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb75",
+            "questionText": "[HW-06] Sensors installed and healthy - thermal, removal detector, vibration, tilt, motion (PIR), smoke (Verify: Physical check; panel status)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb76",
+            "questionText": "[HW-07] Intruder alarm system / control panel and fire detection (abnormal heat / smoke) installed; panel tamper protected (Verify: Physical check)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb77",
+            "questionText": "[HW-08] Two-way audio unit (speaker and microphone) installed and audible (Verify: Physical check; test call)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb78",
+            "questionText": "[HW-10] OEMs of cameras, NVR, switches and accessories not restricted / blacklisted by Govt. of India; BIS certification held for applicable models (Verify: OEM declaration; BIS certificates)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb79",
+            "questionText": "[HW-11] Site preparation, mounting and cabling done safely; old e-surveillance equipment de-installed (Verify: Visual inspection)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          }
+        ]
+      },
+      {
+        "stageId": "6ab11c228e311fa7a5a8cb7a",
+        "stageName": "B. FUNCTIONAL & QUALITY TESTING",
+        "questions": [
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7b",
+            "questionText": "[FT-01] Intrusion / unauthorised activity (PIR / IP camera) raises a real-time alert at CMS, 24x7, including ATMs closed at night; operator verifies by video (Verify: Simulate event; observe CMS)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7c",
+            "questionText": "[FT-02] Each sensor (thermal, removal, vibration, tilt, motion, smoke) triggers the correct alert with site and sensor ID (Verify: Trigger each sensor)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7d",
+            "questionText": "[FT-03] Camera analytics detects covered face / mask / helmet and loitering, and auto-generates an alert ticket (Verify: Test with mask / helmet)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7e",
+            "questionText": "[FT-04] Two-way audio is clear and stays available on link loss; pre-recorded deterrent message of at least 60 seconds plays (Verify: Audio test; link-down test)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7f",
+            "questionText": "[FT-05] Recording retained 180 days or more at site NVR and 7-day backup at CMS; flagged cases retained till closure (Verify: Check oldest recording available)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb80",
+            "questionText": "[FT-06] Video quality and FPS fit for forensic / legal use; date-time stamp correct (Verify: Playback review)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb81",
+            "questionText": "[FT-07] On-demand audio / video pull from CMS; footage given to Bank within 24 hours; export on portable device for police (Verify: Sample footage request)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb82",
+            "questionText": "[FT-08] Alerts sent by SMS / email / call to Branch, Zone and HO officials per escalation matrix; telephone escalation to police etc. (Verify: Test alert; escalation log)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb83",
+            "questionText": "[FT-09] Tickets auto-created and tracked till closure; ticket notes and call recordings kept 180 days or more (Verify: Sample tickets)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb84",
+            "questionText": "[FT-10] Bank can remotely view any ATM and run mock drills (logs available); CMS can remotely control site devices (Verify: Mock drill; demo from CMS)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb85",
+            "questionText": "[FT-11] Automated health checks - camera, HDD, sensor, video housekeeping - with status reports at set intervals (Verify: Health reports)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb86",
+            "questionText": "[FT-12] Web portal and mobile app - real-time status, UP/DOWN with equipment-wise downtime age, live view, screenshots, manual ticket, incident history; role-wise access for BM / ZM / FGMO / ATM Cell / HO Security (Verify: Portal and app walk-through)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb87",
+            "questionText": "[FT-13] Required reports available - uptime, incident, system down, health, ATM-wise alerts, tickets, power cut, chest door / hood open, link uptime, PM, site audit (Verify: Generate sample reports)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb88",
+            "questionText": "[FT-15] 24x7 live screen (LCD) at HO Security Department shows parallel feed of alerts, CCTV status and sensor / equipment health (Verify: Observe at HO)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb89",
+            "questionText": "[FT-16] Preventive maintenance done per quarterly schedule; faults rectified within 24 hrs (metro / urban) or 48 hrs (others); standby equipment and spares available; signed PM and monthly health reports (Verify: PM reports; fault tickets; spares register)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          }
+        ]
+      },
+      {
+        "stageId": "6ab11c238e311fa7a5a8cb8a",
+        "stageName": "C. NETWORK & CYBER SECURITY",
+        "questions": [
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8b",
+            "questionText": "[NS-01] Site-to-CMS connectivity runs over a secure, dedicated VPN (GSM / CDMA) (Verify: Network diagram; VPN config)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8c",
+            "questionText": "[NS-02] Redundant connectivity from two different service providers; failover works; link uptime reported (Verify: Pull primary link; uptime report)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8d",
+            "questionText": "[NS-03] Minimum AES-256 encryption for all video feeds and data at rest (Verify: Config review; traffic capture)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8e",
+            "questionText": "[NS-04] Default credentials disabled on cameras, NVR, panels, routers and CMS (Verify: Login test with default passwords)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8f",
+            "questionText": "[NS-05] Role-based access control (RBAC) on CMS, portal and mobile app; user list reviewed (Verify: User-role matrix)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb90",
+            "questionText": "[NS-06] Multi-factor authentication (MFA) for all administrative access (Verify: Admin login test)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb91",
+            "questionText": "[NS-07] Audit logs of all administrative actions and audit trail of all access / actions retained and protected (Verify: Sample log review)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb92",
+            "questionText": "[NS-08] Security hardening of all hardware and software - unused ports / services closed, firmware and patches current (Verify: Port scan; firmware versions)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb93",
+            "questionText": "[NS-09] All video, metadata and analytics data stays in India (no transfer abroad without Bank's written approval); cloud / hybrid hosting complies with RBI data localisation and DPDP Act, 2023 (Verify: Hosting details; data-flow; declaration)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb94",
+            "questionText": "[NS-10] Annual security audit and VAPT (infrastructure, portal, mobile app) by CERT-In empanelled auditor; compliance certificate submitted to Bank; findings closed (Verify: VAPT report; certificate; closure tracker)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb95",
+            "questionText": "[NS-11] 7-day central backup is restorable and encrypted (Verify: Restore test)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb96",
+            "questionText": "[NS-12] CMS integration with Bank's Incident Response System, ATM monitoring, ticketing tools and SOC is working, secure and compliant with Bank's IT guidelines (Verify: Integration test; SOC logs)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          }
+        ]
+      }
+    ],
+    "started": false,
+    "updatedAt": "2026-10-01T04:32:39.520Z"
+  },
+  {
+    "_id": "6abdef0b5a521a988d79a5da",
+    "auditor": "6ab360773a16ca44b477fea4",
+    "__v": 0,
+    "atmId": "SPSBV007501",
+    "continuingAudit": false,
+    "createdAt": "2026-10-01T05:26:35.576Z",
+    "existingAuditId": null,
+    "lastDevice": "Desktop",
+    "photos": [],
+    "savedAt": "2026-10-01T05:23:55.115Z",
+    "selectedAtm": {
+      "_id": "6ab0f1195c7e9b25b5746672",
+      "slNo": 7,
+      "atmId": "SPSBV007501",
+      "area": {
+        "_id": "6ab0f1195c7e9b25b5746668",
+        "name": "DELHI-II"
+      },
+      "vendor": "Provigil",
+      "bic": "D0075",
+      "branchName": "RAJOURI GARDEN NEW DELHI",
+      "inchargeName": "VARUN GOYAL",
+      "inchargeDesig": "CHIEF MANAGER- IN CHARGE",
+      "inchargeContact": "9888100698",
+      "address": "J-13/37,RAJOURI GARDEN,NEW DELHI",
+      "pincode": "",
+      "state": "DELHI",
+      "siteType": "ONSITE",
+      "location": "RAJOURI GARDEN NEW DELHI",
+      "createdAt": "2026-09-21T08:55:53.819Z",
+      "updatedAt": "2026-09-22T10:50:28.302Z",
+      "__v": 1,
+      "deviceId": "PNSBP1A1042",
+      "link": "https://assets-ap1.iviscloud.net:8443/sitemanager-archive/SMI/52830/20260612115657_PSB_Rajouri_garden_page-0001.jpg",
+      "links": [
+        "https://assets-ap1.iviscloud.net:8443/sitemanager-archive/SMI/52830/20260612115657_PSB_Rajouri_garden_page-0001.jpg",
+        "https://assets-ap1.iviscloud.net:8443/sitemanager-archive/SMI/52830/20260612115702_PSB_Rajouri_garden_page-0002.jpg"
+      ],
+      "isAudited": false,
+      "lastAuditedAt": null
+    },
+    "stageIndex": 0,
+    "stages": [
+      {
+        "stageId": "6ab11c228e311fa7a5a8cb6f",
+        "stageName": "A. HARDWARE VERIFICATION",
+        "questions": [
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb70",
+            "questionText": "[HW-01] Installed equipment matches the approved site list / BoM - make, model, serial no. and quantity (Verify: Physical count vs BoM)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb71",
+            "questionText": "[HW-02] CCTV cameras cover ATM room, back room / UPS cabinet, front lobby and front entrance (Verify: Site walk-through; live feed)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb72",
+            "questionText": "[HW-03] Cameras support H.265 (or better) compression; edge analytics (motion / tamper / intrusion) where offered (Verify: Datasheet; camera config page)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb73",
+            "questionText": "[HW-04] No camera or sensor is positioned to capture customer credentials (PIN pad / screen) (Verify: Check field of view of each camera)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb74",
+            "questionText": "[HW-05] NVR placed in back room, physically secured, storage sized for minimum 180 days recording (Verify: Inspect NVR; storage calculation)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb75",
+            "questionText": "[HW-06] Sensors installed and healthy - thermal, removal detector, vibration, tilt, motion (PIR), smoke (Verify: Physical check; panel status)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb76",
+            "questionText": "[HW-07] Intruder alarm system / control panel and fire detection (abnormal heat / smoke) installed; panel tamper protected (Verify: Physical check)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb77",
+            "questionText": "[HW-08] Two-way audio unit (speaker and microphone) installed and audible (Verify: Physical check; test call)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb78",
+            "questionText": "[HW-10] OEMs of cameras, NVR, switches and accessories not restricted / blacklisted by Govt. of India; BIS certification held for applicable models (Verify: OEM declaration; BIS certificates)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb79",
+            "questionText": "[HW-11] Site preparation, mounting and cabling done safely; old e-surveillance equipment de-installed (Verify: Visual inspection)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          }
+        ]
+      },
+      {
+        "stageId": "6ab11c228e311fa7a5a8cb7a",
+        "stageName": "B. FUNCTIONAL & QUALITY TESTING",
+        "questions": [
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7b",
+            "questionText": "[FT-01] Intrusion / unauthorised activity (PIR / IP camera) raises a real-time alert at CMS, 24x7, including ATMs closed at night; operator verifies by video (Verify: Simulate event; observe CMS)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7c",
+            "questionText": "[FT-02] Each sensor (thermal, removal, vibration, tilt, motion, smoke) triggers the correct alert with site and sensor ID (Verify: Trigger each sensor)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7d",
+            "questionText": "[FT-03] Camera analytics detects covered face / mask / helmet and loitering, and auto-generates an alert ticket (Verify: Test with mask / helmet)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7e",
+            "questionText": "[FT-04] Two-way audio is clear and stays available on link loss; pre-recorded deterrent message of at least 60 seconds plays (Verify: Audio test; link-down test)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7f",
+            "questionText": "[FT-05] Recording retained 180 days or more at site NVR and 7-day backup at CMS; flagged cases retained till closure (Verify: Check oldest recording available)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb80",
+            "questionText": "[FT-06] Video quality and FPS fit for forensic / legal use; date-time stamp correct (Verify: Playback review)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb81",
+            "questionText": "[FT-07] On-demand audio / video pull from CMS; footage given to Bank within 24 hours; export on portable device for police (Verify: Sample footage request)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb82",
+            "questionText": "[FT-08] Alerts sent by SMS / email / call to Branch, Zone and HO officials per escalation matrix; telephone escalation to police etc. (Verify: Test alert; escalation log)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb83",
+            "questionText": "[FT-09] Tickets auto-created and tracked till closure; ticket notes and call recordings kept 180 days or more (Verify: Sample tickets)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb84",
+            "questionText": "[FT-10] Bank can remotely view any ATM and run mock drills (logs available); CMS can remotely control site devices (Verify: Mock drill; demo from CMS)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb85",
+            "questionText": "[FT-11] Automated health checks - camera, HDD, sensor, video housekeeping - with status reports at set intervals (Verify: Health reports)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb86",
+            "questionText": "[FT-12] Web portal and mobile app - real-time status, UP/DOWN with equipment-wise downtime age, live view, screenshots, manual ticket, incident history; role-wise access for BM / ZM / FGMO / ATM Cell / HO Security (Verify: Portal and app walk-through)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb87",
+            "questionText": "[FT-13] Required reports available - uptime, incident, system down, health, ATM-wise alerts, tickets, power cut, chest door / hood open, link uptime, PM, site audit (Verify: Generate sample reports)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb88",
+            "questionText": "[FT-15] 24x7 live screen (LCD) at HO Security Department shows parallel feed of alerts, CCTV status and sensor / equipment health (Verify: Observe at HO)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb89",
+            "questionText": "[FT-16] Preventive maintenance done per quarterly schedule; faults rectified within 24 hrs (metro / urban) or 48 hrs (others); standby equipment and spares available; signed PM and monthly health reports (Verify: PM reports; fault tickets; spares register)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          }
+        ]
+      },
+      {
+        "stageId": "6ab11c238e311fa7a5a8cb8a",
+        "stageName": "C. NETWORK & CYBER SECURITY",
+        "questions": [
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8b",
+            "questionText": "[NS-01] Site-to-CMS connectivity runs over a secure, dedicated VPN (GSM / CDMA) (Verify: Network diagram; VPN config)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8c",
+            "questionText": "[NS-02] Redundant connectivity from two different service providers; failover works; link uptime reported (Verify: Pull primary link; uptime report)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8d",
+            "questionText": "[NS-03] Minimum AES-256 encryption for all video feeds and data at rest (Verify: Config review; traffic capture)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8e",
+            "questionText": "[NS-04] Default credentials disabled on cameras, NVR, panels, routers and CMS (Verify: Login test with default passwords)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8f",
+            "questionText": "[NS-05] Role-based access control (RBAC) on CMS, portal and mobile app; user list reviewed (Verify: User-role matrix)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb90",
+            "questionText": "[NS-06] Multi-factor authentication (MFA) for all administrative access (Verify: Admin login test)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb91",
+            "questionText": "[NS-07] Audit logs of all administrative actions and audit trail of all access / actions retained and protected (Verify: Sample log review)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb92",
+            "questionText": "[NS-08] Security hardening of all hardware and software - unused ports / services closed, firmware and patches current (Verify: Port scan; firmware versions)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb93",
+            "questionText": "[NS-09] All video, metadata and analytics data stays in India (no transfer abroad without Bank's written approval); cloud / hybrid hosting complies with RBI data localisation and DPDP Act, 2023 (Verify: Hosting details; data-flow; declaration)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb94",
+            "questionText": "[NS-10] Annual security audit and VAPT (infrastructure, portal, mobile app) by CERT-In empanelled auditor; compliance certificate submitted to Bank; findings closed (Verify: VAPT report; certificate; closure tracker)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb95",
+            "questionText": "[NS-11] 7-day central backup is restorable and encrypted (Verify: Restore test)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb96",
+            "questionText": "[NS-12] CMS integration with Bank's Incident Response System, ATM monitoring, ticketing tools and SOC is working, secure and compliant with Bank's IT guidelines (Verify: Integration test; SOC logs)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          }
+        ]
+      }
+    ],
+    "started": false,
+    "updatedAt": "2026-10-01T05:26:35.576Z"
+  },
+  {
+    "_id": "6ac3518f5a521a988d79ec86",
+    "auditor": "6ab360773a16ca44b477fea4",
+    "__v": 0,
+    "atmId": "RPSBH060601",
+    "continuingAudit": false,
+    "createdAt": "2026-10-05T07:28:15.756Z",
+    "existingAuditId": null,
+    "lastDevice": "Desktop",
+    "photos": [],
+    "savedAt": "2026-10-06T09:01:07.649Z",
+    "selectedAtm": {
+      "_id": "6ab0f11a5c7e9b25b574668d",
+      "slNo": 34,
+      "atmId": "RPSBH060601",
+      "area": {
+        "_id": "6ab0f1195c7e9b25b5746668",
+        "name": "DELHI-II"
+      },
+      "vendor": "Provigil",
+      "bic": "D0606",
+      "branchName": "RAJENDRA PLACE, NEW DELHI",
+      "inchargeName": "DHEERENDRA VIKRAM SINGH",
+      "inchargeDesig": "ASST GENERAL MANAGER- IN CHARGE",
+      "inchargeContact": "9456295003",
+      "address": "21,BANKHOUSE,RAJENDRAPLACE,GROUND FLOOR,NEW DELHI",
+      "pincode": "",
+      "state": "DELHI",
+      "siteType": "CRM",
+      "location": "RAJENDRA PLACE, NEW DELHI",
+      "createdAt": "2026-09-21T08:55:54.579Z",
+      "updatedAt": "2026-09-22T10:50:29.219Z",
+      "__v": 1,
+      "deviceId": "PNSBP1A1001",
+      "link": "https://assets-ap1.iviscloud.net:8443/sitemanager-archive/SMI/52580/20260821102342_20260813101512_WhatsApp_Image_2026-08-12_at_6.28.35_PM_page-0002.jpg",
+      "links": [
+        "https://assets-ap1.iviscloud.net:8443/sitemanager-archive/SMI/52580/20260821102342_20260813101512_WhatsApp_Image_2026-08-12_at_6.28.35_PM_page-0002.jpg",
+        "https://assets-ap1.iviscloud.net:8443/sitemanager-archive/SMI/52580/20260821103408_h.jpg"
+      ],
+      "isAudited": false,
+      "lastAuditedAt": null
+    },
+    "stageIndex": 0,
+    "stages": [
+      {
+        "stageId": "6ab11c228e311fa7a5a8cb6f",
+        "stageName": "A. HARDWARE VERIFICATION",
+        "questions": [
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb70",
+            "questionText": "[HW-01] Installed equipment matches the approved site list / BoM - make, model, serial no. and quantity (Verify: Physical count vs BoM)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb71",
+            "questionText": "[HW-02] CCTV cameras cover ATM room, back room / UPS cabinet, front lobby and front entrance (Verify: Site walk-through; live feed)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb72",
+            "questionText": "[HW-03] Cameras support H.265 (or better) compression; edge analytics (motion / tamper / intrusion) where offered (Verify: Datasheet; camera config page)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb73",
+            "questionText": "[HW-04] No camera or sensor is positioned to capture customer credentials (PIN pad / screen) (Verify: Check field of view of each camera)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb74",
+            "questionText": "[HW-05] NVR placed in back room, physically secured, storage sized for minimum 180 days recording (Verify: Inspect NVR; storage calculation)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb75",
+            "questionText": "[HW-06] Sensors installed and healthy - thermal, removal detector, vibration, tilt, motion (PIR), smoke (Verify: Physical check; panel status)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb76",
+            "questionText": "[HW-07] Intruder alarm system / control panel and fire detection (abnormal heat / smoke) installed; panel tamper protected (Verify: Physical check)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb77",
+            "questionText": "[HW-08] Two-way audio unit (speaker and microphone) installed and audible (Verify: Physical check; test call)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb78",
+            "questionText": "[HW-10] OEMs of cameras, NVR, switches and accessories not restricted / blacklisted by Govt. of India; BIS certification held for applicable models (Verify: OEM declaration; BIS certificates)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c228e311fa7a5a8cb79",
+            "questionText": "[HW-11] Site preparation, mounting and cabling done safely; old e-surveillance equipment de-installed (Verify: Visual inspection)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          }
+        ]
+      },
+      {
+        "stageId": "6ab11c228e311fa7a5a8cb7a",
+        "stageName": "B. FUNCTIONAL & QUALITY TESTING",
+        "questions": [
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7b",
+            "questionText": "[FT-01] Intrusion / unauthorised activity (PIR / IP camera) raises a real-time alert at CMS, 24x7, including ATMs closed at night; operator verifies by video (Verify: Simulate event; observe CMS)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7c",
+            "questionText": "[FT-02] Each sensor (thermal, removal, vibration, tilt, motion, smoke) triggers the correct alert with site and sensor ID (Verify: Trigger each sensor)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7d",
+            "questionText": "[FT-03] Camera analytics detects covered face / mask / helmet and loitering, and auto-generates an alert ticket (Verify: Test with mask / helmet)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7e",
+            "questionText": "[FT-04] Two-way audio is clear and stays available on link loss; pre-recorded deterrent message of at least 60 seconds plays (Verify: Audio test; link-down test)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb7f",
+            "questionText": "[FT-05] Recording retained 180 days or more at site NVR and 7-day backup at CMS; flagged cases retained till closure (Verify: Check oldest recording available)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb80",
+            "questionText": "[FT-06] Video quality and FPS fit for forensic / legal use; date-time stamp correct (Verify: Playback review)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb81",
+            "questionText": "[FT-07] On-demand audio / video pull from CMS; footage given to Bank within 24 hours; export on portable device for police (Verify: Sample footage request)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb82",
+            "questionText": "[FT-08] Alerts sent by SMS / email / call to Branch, Zone and HO officials per escalation matrix; telephone escalation to police etc. (Verify: Test alert; escalation log)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb83",
+            "questionText": "[FT-09] Tickets auto-created and tracked till closure; ticket notes and call recordings kept 180 days or more (Verify: Sample tickets)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb84",
+            "questionText": "[FT-10] Bank can remotely view any ATM and run mock drills (logs available); CMS can remotely control site devices (Verify: Mock drill; demo from CMS)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb85",
+            "questionText": "[FT-11] Automated health checks - camera, HDD, sensor, video housekeeping - with status reports at set intervals (Verify: Health reports)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb86",
+            "questionText": "[FT-12] Web portal and mobile app - real-time status, UP/DOWN with equipment-wise downtime age, live view, screenshots, manual ticket, incident history; role-wise access for BM / ZM / FGMO / ATM Cell / HO Security (Verify: Portal and app walk-through)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb87",
+            "questionText": "[FT-13] Required reports available - uptime, incident, system down, health, ATM-wise alerts, tickets, power cut, chest door / hood open, link uptime, PM, site audit (Verify: Generate sample reports)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb88",
+            "questionText": "[FT-15] 24x7 live screen (LCD) at HO Security Department shows parallel feed of alerts, CCTV status and sensor / equipment health (Verify: Observe at HO)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb89",
+            "questionText": "[FT-16] Preventive maintenance done per quarterly schedule; faults rectified within 24 hrs (metro / urban) or 48 hrs (others); standby equipment and spares available; signed PM and monthly health reports (Verify: PM reports; fault tickets; spares register)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          }
+        ]
+      },
+      {
+        "stageId": "6ab11c238e311fa7a5a8cb8a",
+        "stageName": "C. NETWORK & CYBER SECURITY",
+        "questions": [
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8b",
+            "questionText": "[NS-01] Site-to-CMS connectivity runs over a secure, dedicated VPN (GSM / CDMA) (Verify: Network diagram; VPN config)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8c",
+            "questionText": "[NS-02] Redundant connectivity from two different service providers; failover works; link uptime reported (Verify: Pull primary link; uptime report)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8d",
+            "questionText": "[NS-03] Minimum AES-256 encryption for all video feeds and data at rest (Verify: Config review; traffic capture)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8e",
+            "questionText": "[NS-04] Default credentials disabled on cameras, NVR, panels, routers and CMS (Verify: Login test with default passwords)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb8f",
+            "questionText": "[NS-05] Role-based access control (RBAC) on CMS, portal and mobile app; user list reviewed (Verify: User-role matrix)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb90",
+            "questionText": "[NS-06] Multi-factor authentication (MFA) for all administrative access (Verify: Admin login test)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb91",
+            "questionText": "[NS-07] Audit logs of all administrative actions and audit trail of all access / actions retained and protected (Verify: Sample log review)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb92",
+            "questionText": "[NS-08] Security hardening of all hardware and software - unused ports / services closed, firmware and patches current (Verify: Port scan; firmware versions)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb93",
+            "questionText": "[NS-09] All video, metadata and analytics data stays in India (no transfer abroad without Bank's written approval); cloud / hybrid hosting complies with RBI data localisation and DPDP Act, 2023 (Verify: Hosting details; data-flow; declaration)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb94",
+            "questionText": "[NS-10] Annual security audit and VAPT (infrastructure, portal, mobile app) by CERT-In empanelled auditor; compliance certificate submitted to Bank; findings closed (Verify: VAPT report; certificate; closure tracker)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb95",
+            "questionText": "[NS-11] 7-day central backup is restorable and encrypted (Verify: Restore test)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          },
+          {
+            "questionId": "6ab11c238e311fa7a5a8cb96",
+            "questionText": "[NS-12] CMS integration with Bank's Incident Response System, ATM monitoring, ticketing tools and SOC is working, secure and compliant with Bank's IT guidelines (Verify: Integration test; SOC logs)",
+            "answer": "",
+            "reason": "",
+            "photos": []
+          }
+        ]
+      }
+    ],
+    "started": false,
+    "updatedAt": "2026-10-06T09:01:08.225Z"
+  }
+]

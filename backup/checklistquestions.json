@@ -1,0 +1,335 @@
+[
+  {
+    "_id": "6ab11c228e311fa7a5a8cb70",
+    "stage": "6ab11c228e311fa7a5a8cb6f",
+    "text": "[HW-01] Installed equipment matches the approved site list / BoM - make, model, serial no. and quantity (Verify: Physical count vs BoM)",
+    "order": 0,
+    "createdAt": "2026-09-21T11:59:30.637Z",
+    "updatedAt": "2026-09-21T11:59:30.637Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c228e311fa7a5a8cb71",
+    "stage": "6ab11c228e311fa7a5a8cb6f",
+    "text": "[HW-02] CCTV cameras cover ATM room, back room / UPS cabinet, front lobby and front entrance (Verify: Site walk-through; live feed)",
+    "order": 1,
+    "createdAt": "2026-09-21T11:59:30.680Z",
+    "updatedAt": "2026-09-21T11:59:30.680Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c228e311fa7a5a8cb72",
+    "stage": "6ab11c228e311fa7a5a8cb6f",
+    "text": "[HW-03] Cameras support H.265 (or better) compression; edge analytics (motion / tamper / intrusion) where offered (Verify: Datasheet; camera config page)",
+    "order": 2,
+    "createdAt": "2026-09-21T11:59:30.727Z",
+    "updatedAt": "2026-09-21T11:59:30.727Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c228e311fa7a5a8cb73",
+    "stage": "6ab11c228e311fa7a5a8cb6f",
+    "text": "[HW-04] No camera or sensor is positioned to capture customer credentials (PIN pad / screen) (Verify: Check field of view of each camera)",
+    "order": 3,
+    "createdAt": "2026-09-21T11:59:30.770Z",
+    "updatedAt": "2026-09-21T11:59:30.770Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c228e311fa7a5a8cb74",
+    "stage": "6ab11c228e311fa7a5a8cb6f",
+    "text": "[HW-05] NVR placed in back room, physically secured, storage sized for minimum 180 days recording (Verify: Inspect NVR; storage calculation)",
+    "order": 4,
+    "createdAt": "2026-09-21T11:59:30.805Z",
+    "updatedAt": "2026-09-21T11:59:30.805Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c228e311fa7a5a8cb75",
+    "stage": "6ab11c228e311fa7a5a8cb6f",
+    "text": "[HW-06] Sensors installed and healthy - thermal, removal detector, vibration, tilt, motion (PIR), smoke (Verify: Physical check; panel status)",
+    "order": 5,
+    "createdAt": "2026-09-21T11:59:30.833Z",
+    "updatedAt": "2026-09-21T11:59:30.833Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c228e311fa7a5a8cb76",
+    "stage": "6ab11c228e311fa7a5a8cb6f",
+    "text": "[HW-07] Intruder alarm system / control panel and fire detection (abnormal heat / smoke) installed; panel tamper protected (Verify: Physical check)",
+    "order": 6,
+    "createdAt": "2026-09-21T11:59:30.861Z",
+    "updatedAt": "2026-09-21T11:59:30.861Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c228e311fa7a5a8cb77",
+    "stage": "6ab11c228e311fa7a5a8cb6f",
+    "text": "[HW-08] Two-way audio unit (speaker and microphone) installed and audible (Verify: Physical check; test call)",
+    "order": 7,
+    "createdAt": "2026-09-21T11:59:30.890Z",
+    "updatedAt": "2026-09-21T11:59:30.890Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c228e311fa7a5a8cb78",
+    "stage": "6ab11c228e311fa7a5a8cb6f",
+    "text": "[HW-10] OEMs of cameras, NVR, switches and accessories not restricted / blacklisted by Govt. of India; BIS certification held for applicable models (Verify: OEM declaration; BIS certificates)",
+    "order": 8,
+    "createdAt": "2026-09-21T11:59:30.917Z",
+    "updatedAt": "2026-09-21T11:59:30.917Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c228e311fa7a5a8cb79",
+    "stage": "6ab11c228e311fa7a5a8cb6f",
+    "text": "[HW-11] Site preparation, mounting and cabling done safely; old e-surveillance equipment de-installed (Verify: Visual inspection)",
+    "order": 9,
+    "createdAt": "2026-09-21T11:59:30.945Z",
+    "updatedAt": "2026-09-21T11:59:30.945Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb7b",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-01] Intrusion / unauthorised activity (PIR / IP camera) raises a real-time alert at CMS, 24x7, including ATMs closed at night; operator verifies by video (Verify: Simulate event; observe CMS)",
+    "order": 0,
+    "createdAt": "2026-09-21T11:59:31.000Z",
+    "updatedAt": "2026-09-21T11:59:31.000Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb7c",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-02] Each sensor (thermal, removal, vibration, tilt, motion, smoke) triggers the correct alert with site and sensor ID (Verify: Trigger each sensor)",
+    "order": 1,
+    "createdAt": "2026-09-21T11:59:31.026Z",
+    "updatedAt": "2026-09-21T11:59:31.026Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb7d",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-03] Camera analytics detects covered face / mask / helmet and loitering, and auto-generates an alert ticket (Verify: Test with mask / helmet)",
+    "order": 2,
+    "createdAt": "2026-09-21T11:59:31.058Z",
+    "updatedAt": "2026-09-21T11:59:31.058Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb7e",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-04] Two-way audio is clear and stays available on link loss; pre-recorded deterrent message of at least 60 seconds plays (Verify: Audio test; link-down test)",
+    "order": 3,
+    "createdAt": "2026-09-21T11:59:31.084Z",
+    "updatedAt": "2026-09-21T11:59:31.084Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb7f",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-05] Recording retained 180 days or more at site NVR and 7-day backup at CMS; flagged cases retained till closure (Verify: Check oldest recording available)",
+    "order": 4,
+    "createdAt": "2026-09-21T11:59:31.110Z",
+    "updatedAt": "2026-09-21T11:59:31.110Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb80",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-06] Video quality and FPS fit for forensic / legal use; date-time stamp correct (Verify: Playback review)",
+    "order": 5,
+    "createdAt": "2026-09-21T11:59:31.136Z",
+    "updatedAt": "2026-09-21T11:59:31.136Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb81",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-07] On-demand audio / video pull from CMS; footage given to Bank within 24 hours; export on portable device for police (Verify: Sample footage request)",
+    "order": 6,
+    "createdAt": "2026-09-21T11:59:31.161Z",
+    "updatedAt": "2026-09-21T11:59:31.161Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb82",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-08] Alerts sent by SMS / email / call to Branch, Zone and HO officials per escalation matrix; telephone escalation to police etc. (Verify: Test alert; escalation log)",
+    "order": 7,
+    "createdAt": "2026-09-21T11:59:31.189Z",
+    "updatedAt": "2026-09-21T11:59:31.189Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb83",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-09] Tickets auto-created and tracked till closure; ticket notes and call recordings kept 180 days or more (Verify: Sample tickets)",
+    "order": 8,
+    "createdAt": "2026-09-21T11:59:31.218Z",
+    "updatedAt": "2026-09-21T11:59:31.218Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb84",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-10] Bank can remotely view any ATM and run mock drills (logs available); CMS can remotely control site devices (Verify: Mock drill; demo from CMS)",
+    "order": 9,
+    "createdAt": "2026-09-21T11:59:31.243Z",
+    "updatedAt": "2026-09-21T11:59:31.243Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb85",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-11] Automated health checks - camera, HDD, sensor, video housekeeping - with status reports at set intervals (Verify: Health reports)",
+    "order": 10,
+    "createdAt": "2026-09-21T11:59:31.270Z",
+    "updatedAt": "2026-09-21T11:59:31.270Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb86",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-12] Web portal and mobile app - real-time status, UP/DOWN with equipment-wise downtime age, live view, screenshots, manual ticket, incident history; role-wise access for BM / ZM / FGMO / ATM Cell / HO Security (Verify: Portal and app walk-through)",
+    "order": 11,
+    "createdAt": "2026-09-21T11:59:31.298Z",
+    "updatedAt": "2026-09-21T11:59:31.298Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb87",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-13] Required reports available - uptime, incident, system down, health, ATM-wise alerts, tickets, power cut, chest door / hood open, link uptime, PM, site audit (Verify: Generate sample reports)",
+    "order": 12,
+    "createdAt": "2026-09-21T11:59:31.324Z",
+    "updatedAt": "2026-09-21T11:59:31.324Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb88",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-15] 24x7 live screen (LCD) at HO Security Department shows parallel feed of alerts, CCTV status and sensor / equipment health (Verify: Observe at HO)",
+    "order": 13,
+    "createdAt": "2026-09-21T11:59:31.350Z",
+    "updatedAt": "2026-09-21T11:59:31.350Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb89",
+    "stage": "6ab11c228e311fa7a5a8cb7a",
+    "text": "[FT-16] Preventive maintenance done per quarterly schedule; faults rectified within 24 hrs (metro / urban) or 48 hrs (others); standby equipment and spares available; signed PM and monthly health reports (Verify: PM reports; fault tickets; spares register)",
+    "order": 14,
+    "createdAt": "2026-09-21T11:59:31.376Z",
+    "updatedAt": "2026-09-21T11:59:31.376Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb8b",
+    "stage": "6ab11c238e311fa7a5a8cb8a",
+    "text": "[NS-01] Site-to-CMS connectivity runs over a secure, dedicated VPN (GSM / CDMA) (Verify: Network diagram; VPN config)",
+    "order": 0,
+    "createdAt": "2026-09-21T11:59:31.428Z",
+    "updatedAt": "2026-09-21T11:59:31.428Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb8c",
+    "stage": "6ab11c238e311fa7a5a8cb8a",
+    "text": "[NS-02] Redundant connectivity from two different service providers; failover works; link uptime reported (Verify: Pull primary link; uptime report)",
+    "order": 1,
+    "createdAt": "2026-09-21T11:59:31.469Z",
+    "updatedAt": "2026-09-21T11:59:31.469Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb8d",
+    "stage": "6ab11c238e311fa7a5a8cb8a",
+    "text": "[NS-03] Minimum AES-256 encryption for all video feeds and data at rest (Verify: Config review; traffic capture)",
+    "order": 2,
+    "createdAt": "2026-09-21T11:59:31.496Z",
+    "updatedAt": "2026-09-21T11:59:31.496Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb8e",
+    "stage": "6ab11c238e311fa7a5a8cb8a",
+    "text": "[NS-04] Default credentials disabled on cameras, NVR, panels, routers and CMS (Verify: Login test with default passwords)",
+    "order": 3,
+    "createdAt": "2026-09-21T11:59:31.526Z",
+    "updatedAt": "2026-09-21T11:59:31.526Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb8f",
+    "stage": "6ab11c238e311fa7a5a8cb8a",
+    "text": "[NS-05] Role-based access control (RBAC) on CMS, portal and mobile app; user list reviewed (Verify: User-role matrix)",
+    "order": 4,
+    "createdAt": "2026-09-21T11:59:31.552Z",
+    "updatedAt": "2026-09-21T11:59:31.552Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb90",
+    "stage": "6ab11c238e311fa7a5a8cb8a",
+    "text": "[NS-06] Multi-factor authentication (MFA) for all administrative access (Verify: Admin login test)",
+    "order": 5,
+    "createdAt": "2026-09-21T11:59:31.579Z",
+    "updatedAt": "2026-09-21T11:59:31.579Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb91",
+    "stage": "6ab11c238e311fa7a5a8cb8a",
+    "text": "[NS-07] Audit logs of all administrative actions and audit trail of all access / actions retained and protected (Verify: Sample log review)",
+    "order": 6,
+    "createdAt": "2026-09-21T11:59:31.605Z",
+    "updatedAt": "2026-09-21T11:59:31.605Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb92",
+    "stage": "6ab11c238e311fa7a5a8cb8a",
+    "text": "[NS-08] Security hardening of all hardware and software - unused ports / services closed, firmware and patches current (Verify: Port scan; firmware versions)",
+    "order": 7,
+    "createdAt": "2026-09-21T11:59:31.631Z",
+    "updatedAt": "2026-09-21T11:59:31.631Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb93",
+    "stage": "6ab11c238e311fa7a5a8cb8a",
+    "text": "[NS-09] All video, metadata and analytics data stays in India (no transfer abroad without Bank's written approval); cloud / hybrid hosting complies with RBI data localisation and DPDP Act, 2023 (Verify: Hosting details; data-flow; declaration)",
+    "order": 8,
+    "createdAt": "2026-09-21T11:59:31.658Z",
+    "updatedAt": "2026-09-21T11:59:31.658Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb94",
+    "stage": "6ab11c238e311fa7a5a8cb8a",
+    "text": "[NS-10] Annual security audit and VAPT (infrastructure, portal, mobile app) by CERT-In empanelled auditor; compliance certificate submitted to Bank; findings closed (Verify: VAPT report; certificate; closure tracker)",
+    "order": 9,
+    "createdAt": "2026-09-21T11:59:31.684Z",
+    "updatedAt": "2026-09-21T11:59:31.684Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb95",
+    "stage": "6ab11c238e311fa7a5a8cb8a",
+    "text": "[NS-11] 7-day central backup is restorable and encrypted (Verify: Restore test)",
+    "order": 10,
+    "createdAt": "2026-09-21T11:59:31.711Z",
+    "updatedAt": "2026-09-21T11:59:31.711Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb96",
+    "stage": "6ab11c238e311fa7a5a8cb8a",
+    "text": "[NS-12] CMS integration with Bank's Incident Response System, ATM monitoring, ticketing tools and SOC is working, secure and compliant with Bank's IT guidelines (Verify: Integration test; SOC logs)",
+    "order": 11,
+    "createdAt": "2026-09-21T11:59:31.741Z",
+    "updatedAt": "2026-09-21T11:59:31.741Z",
+    "__v": 0
+  }
+]

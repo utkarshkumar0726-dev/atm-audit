@@ -11,6 +11,10 @@ const atmSchema = new mongoose.Schema(
     inchargeName: { type: String, default: '', trim: true },
     inchargeDesig: { type: String, default: '', trim: true },
     inchargeContact: { type: String, default: '', trim: true },
+    additionalContacts: [{
+      name: { type: String, trim: true },
+      phone: { type: String, trim: true }
+    }],
     address: { type: String, default: '', trim: true },
     pincode: { type: String, default: '', trim: true },
     state: { type: String, default: '', trim: true },

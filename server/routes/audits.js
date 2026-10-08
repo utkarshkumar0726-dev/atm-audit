@@ -6,7 +6,70 @@ const { parseUserAgent, getClientIp } = require('../utils/agentParser');
 const router = express.Router();
 
 function isImageDataUrl(value) {
-  return typeof value === 'string' && value.startsWith('data:image/');
+  return typeof value === 'string' && (
+    value.startsWith('data:image/') ||
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('/')
+  );
+}
+
+function getStageSortOrder(stage) {
+  const name = String(stage?.stageName || stage?.name || '').toLowerCase();
+  const id = String(stage?.stageId || '').toLowerCase();
+  const combined = `${name} ${id}`;
+  if (combined.includes('1') || combined.includes('hardware')) return 1;
+  if (combined.includes('2') || combined.includes('functional')) return 2;
+  if (combined.includes('3') || combined.includes('network')) return 3;
+  const match = combined.match(/\d+/);
+  return match ? parseInt(match[0], 10) : 999;
+}
+
+function mergeAuditStages(existingStages = [], incomingStages = []) {
+  const stageMap = new Map();
+
+  // First register existing stages
+  for (const st of existingStages) {
+    if (!st) continue;
+    const key = String(st.stageId || st.stageName || '').trim().toLowerCase();
+    if (key) {
+      stageMap.set(key, JSON.parse(JSON.stringify(st)));
+    }
+  }
+
+  // Next merge or insert incoming stages
+  for (const newStage of incomingStages) {
+    if (!newStage) continue;
+    const key = String(newStage.stageId || newStage.stageName || '').trim().toLowerCase();
+    if (!key) continue;
+
+    if (!stageMap.has(key)) {
+      stageMap.set(key, JSON.parse(JSON.stringify(newStage)));
+    } else {
+      const existing = stageMap.get(key);
+      const qMap = new Map();
+      (existing.questions || []).forEach((q) => {
+        const qKey = String(q.questionId || q.questionText || '').trim().toLowerCase();
+        if (qKey) qMap.set(qKey, q);
+      });
+
+      (newStage.questions || []).forEach((newQ) => {
+        const qKey = String(newQ.questionId || newQ.questionText || '').trim().toLowerCase();
+        if (qKey) {
+          // If already answered in new question or updating answer
+          qMap.set(qKey, newQ);
+        }
+      });
+
+      existing.questions = Array.from(qMap.values());
+      existing.stageName = newStage.stageName || existing.stageName;
+      existing.stageId = newStage.stageId || existing.stageId;
+      stageMap.set(key, existing);
+    }
+  }
+
+  const result = Array.from(stageMap.values());
+  return result.sort((a, b) => getStageSortOrder(a) - getStageSortOrder(b));
 }
 
 function validateStages(stages) {
@@ -32,7 +95,7 @@ function validateStages(stages) {
   return null;
 }
 
-// POST /api/audits - auditor submits a completed or partial audit form (Stage 1 alone, 1 & 2, or all 3)
+// POST /api/audits - auditor submits or updates audit stage(s) (Stage 1 alone, Stage 2, Stage 3, or all 3)
 router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
   try {
     const { atmId, area, photos, stages, auditId } = req.body;
@@ -45,7 +108,31 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
       return res.status(400).json({ message: 'area is required' });
     }
 
-    if (!Array.isArray(photos) || photos.length === 0 || !photos.every(isImageDataUrl)) {
+    // Look up any existing audits for this atmId and auditor
+    let existingAudits = [];
+    if (auditId) {
+      const byId = await Audit.findOne({ _id: auditId, auditor: req.user.id });
+      if (byId) existingAudits.push(byId);
+    }
+
+    const byAtm = await Audit.find({
+      atmId: { $regex: new RegExp(`^${atmId.trim()}$`, 'i') },
+      auditor: req.user.id,
+    }).sort({ createdAt: -1 });
+
+    for (const ea of byAtm) {
+      if (!existingAudits.some((a) => a._id.toString() === ea._id.toString())) {
+        existingAudits.push(ea);
+      }
+    }
+
+    const primaryAudit = existingAudits[0] || null;
+
+    // Photos validation: either incoming photos are provided, OR existing audit already has photos
+    const hasIncomingPhotos = Array.isArray(photos) && photos.length > 0 && photos.every(isImageDataUrl);
+    const hasExistingPhotos = primaryAudit && Array.isArray(primaryAudit.photos) && primaryAudit.photos.length > 0;
+
+    if (!hasIncomingPhotos && !hasExistingPhotos) {
       return res.status(400).json({ message: 'At least one ATM photo is required to start the audit' });
     }
 
@@ -57,25 +144,28 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
     let audit = null;
     let isUpdate = false;
 
-    // If auditId is provided or an existing partial audit exists for this ATM by this auditor, update it
-    if (auditId) {
-      audit = await Audit.findOne({ _id: auditId, auditor: req.user.id });
-    } else {
-      // Check if there is an existing audit with fewer stages that is being extended
-      const existingAudit = await Audit.findOne({
-        atmId: { $regex: new RegExp(`^${atmId.trim()}$`, 'i') },
-        auditor: req.user.id,
-      }).sort({ createdAt: -1 });
-
-      if (existingAudit && (!existingAudit.stages || existingAudit.stages.length < stages.length)) {
-        audit = existingAudit;
-      }
-    }
-
-    if (audit) {
+    if (primaryAudit) {
       isUpdate = true;
-      audit.photos = photos && photos.length ? photos : audit.photos;
-      audit.stages = stages;
+      audit = primaryAudit;
+
+      // Consolidate and clean up any historical duplicate audits for this ATM
+      if (existingAudits.length > 1) {
+        for (const dup of existingAudits.slice(1)) {
+          audit.stages = mergeAuditStages(audit.stages, dup.stages);
+          if (Array.isArray(dup.photos)) {
+            audit.photos = Array.from(new Set([...(audit.photos || []), ...dup.photos]));
+          }
+          await Audit.findByIdAndDelete(dup._id);
+        }
+      }
+
+      // Merge new stage(s) into existing audit stages
+      audit.stages = mergeAuditStages(audit.stages, stages);
+
+      // Update photos if new ones were submitted
+      if (hasIncomingPhotos) {
+        audit.photos = photos;
+      }
       audit.area = area.trim();
       await audit.save();
     } else {
@@ -83,8 +173,8 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
         atmId: atmId.trim(),
         area: area.trim(),
         auditor: req.user.id,
-        photos,
-        stages,
+        photos: hasIncomingPhotos ? photos : [],
+        stages: mergeAuditStages([], stages),
       });
     }
 
@@ -92,18 +182,16 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
     try {
       const ip = getClientIp(req);
       const { device, browser } = parseUserAgent(req.headers['user-agent']);
-      const questionPhotosCount = stages?.reduce(
-        (acc, s) => acc + (s.questions?.reduce((qAcc, q) => qAcc + (q.photos?.length || 0), 0) || 0),
-        0
-      ) || 0;
+      const totalPhotosCount = (audit.photos?.length || 0) + (
+        audit.stages?.reduce(
+          (acc, s) => acc + (s.questions?.reduce((qAcc, q) => qAcc + (q.photos?.length || 0), 0) || 0),
+          0
+        ) || 0
+      );
 
       const action = isUpdate
-        ? 'AUDIT_STAGES_UPDATED'
-        : stages.length >= 3
-        ? 'FULL_AUDIT_SUBMITTED'
-        : stages.length === 1
-        ? 'STAGE_1_SUBMITTED'
-        : `STAGES_1_${stages.length}_SUBMITTED`;
+        ? (audit.stages.length >= 3 ? 'AUDIT_ALL_STAGES_COMPLETED' : `AUDIT_STAGE_${stages.map(s => s.stageName).join('_')}_UPDATED`)
+        : (audit.stages.length >= 3 ? 'FULL_AUDIT_SUBMITTED' : `AUDIT_INITIAL_STAGE_SUBMITTED`);
 
       await AuditLog.create({
         audit: audit._id,
@@ -113,8 +201,8 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
         atmId: audit.atmId,
         area: audit.area,
         action,
-        photoCount: (photos?.length || 0) + questionPhotosCount,
-        stageCount: stages?.length || 0,
+        photoCount: totalPhotosCount,
+        stageCount: audit.stages?.length || 0,
         ip,
         userAgent: req.headers['user-agent'] || '',
         device,
@@ -124,7 +212,7 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
       console.error('Failed to write audit log:', logErr);
     }
 
-    // Clean up draft from MongoDB since audit has been submitted
+    // Clean up draft from MongoDB since these stages have been committed
     try {
       await AuditDraft.deleteMany({
         auditor: req.user.id,
@@ -236,15 +324,30 @@ router.delete('/draft', requireAuth, requireRole('auditor'), async (req, res) =>
 // GET /api/audits/atm/:atmId - auditor fetches previous audit for an ATM to continue it
 router.get('/atm/:atmId', requireAuth, requireRole('auditor'), async (req, res) => {
   try {
-    const audit = await Audit.findOne({
+    const audits = await Audit.find({
       atmId: { $regex: new RegExp(`^${req.params.atmId.trim()}$`, 'i') },
       auditor: req.user.id,
     }).sort({ createdAt: -1 });
 
-    if (!audit) {
+    if (!audits || audits.length === 0) {
       return res.status(404).json({ message: 'No previous audit found for this ATM' });
     }
-    res.json(audit);
+
+    let primaryAudit = audits[0];
+    if (audits.length > 1) {
+      // Consolidate all historical fragments into primaryAudit
+      for (const dup of audits.slice(1)) {
+        primaryAudit.stages = mergeAuditStages(primaryAudit.stages, dup.stages);
+        if (Array.isArray(dup.photos)) {
+          primaryAudit.photos = Array.from(new Set([...(primaryAudit.photos || []), ...dup.photos]));
+        }
+        await Audit.findByIdAndDelete(dup._id);
+      }
+      primaryAudit.stages = mergeAuditStages([], primaryAudit.stages);
+      await primaryAudit.save();
+    }
+
+    res.json(primaryAudit);
   } catch (err) {
     console.error('Fetch ATM audit error:', err);
     res.status(500).json({ message: 'Server error fetching ATM audit' });
@@ -254,7 +357,24 @@ router.get('/atm/:atmId', requireAuth, requireRole('auditor'), async (req, res) 
 // GET /api/audits/mine - auditor views their own submitted audits
 router.get('/mine', requireAuth, requireRole('auditor'), async (req, res) => {
   try {
-    const audits = await Audit.find({ auditor: req.user.id }).sort({ createdAt: -1 });
+    const rawAudits = await Audit.find({ auditor: req.user.id }).sort({ createdAt: -1 });
+    
+    // Group and consolidate any duplicate records for the same ATM
+    const atmMap = new Map();
+    const audits = [];
+
+    for (const audit of rawAudits) {
+      const key = String(audit.atmId || '').trim().toLowerCase();
+      if (!atmMap.has(key)) {
+        atmMap.set(key, audit);
+        audits.push(audit);
+      } else {
+        // If a duplicate exists, merge stages into the earlier registered audit
+        const existing = atmMap.get(key);
+        existing.stages = mergeAuditStages(existing.stages, audit.stages);
+      }
+    }
+
     res.json(audits);
   } catch (err) {
     console.error('Fetch my audits error:', err);

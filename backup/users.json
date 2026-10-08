@@ -1,0 +1,48 @@
+[
+  {
+    "_id": "6aaceb0c0ed76b3b0a0f29d8",
+    "name": "Administrator",
+    "username": "admin",
+    "password": "$2a$10$IWyIqdELXEw3gMZ0/mv0Re0AjSdmg8B07vD3gZsUsuQECKVDB31fG",
+    "role": "admin",
+    "createdAt": "2026-09-18T07:41:00.915Z",
+    "updatedAt": "2026-09-30T05:04:12.349Z",
+    "__v": 0,
+    "email": "",
+    "phone": ""
+  },
+  {
+    "_id": "6ab25a0dea4a7cbe2d776c13",
+    "name": "Demo Admin",
+    "username": "demoadmin",
+    "password": "$2a$10$oCsusfoRameVTdMggE0qW.10jj56rrUiP617FE.MxgObh5S5mrVxW",
+    "role": "admin",
+    "createdAt": "2026-09-22T10:35:57.762Z",
+    "updatedAt": "2026-09-22T12:49:46.758Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab360773a16ca44b477fea4",
+    "name": "Jitender",
+    "username": "jitender5353@gmail.com",
+    "password": "$2a$10$WefWv8vJMCFc635uT2gMCeyVNA4/53u/8mc8VWg3xn7Lr9tAV15rm",
+    "email": "jitender5353@gmail.com",
+    "phone": "9873886714",
+    "role": "auditor",
+    "createdAt": "2026-09-23T05:15:35.291Z",
+    "updatedAt": "2026-09-23T05:16:20.258Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab360c720f393f23084cf03",
+    "name": "Rajan",
+    "username": "mr.rajan137@gmail.com",
+    "password": "$2a$10$Je7zyw.N9XQqwbd092fo7.Pi4Ztnu0MSZNDF7R7GS6Nxx6pz6JpBu",
+    "email": "mr.rajan137@gmail.com",
+    "phone": "9040924447",
+    "role": "auditor",
+    "createdAt": "2026-09-23T05:16:55.530Z",
+    "updatedAt": "2026-09-23T05:16:55.530Z",
+    "__v": 0
+  }
+]

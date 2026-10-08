@@ -116,98 +116,131 @@ export default function AuditForm() {
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftSource, setDraftSource] = useState('');
 
+  // Contact editing states
+  const [isEditingContact, setIsEditingContact] = useState(false);
+  const [editContactName, setEditContactName] = useState('');
+  const [editContactPhone, setEditContactPhone] = useState('');
+  const [updatingContact, setUpdatingContact] = useState(false);
+
+  // Stage-by-stage saved status & feedback
+  const [savedStageIds, setSavedStageIds] = useState(new Set());
+  const [stageSuccessMessage, setStageSuccessMessage] = useState('');
+  const [savingStageIndex, setSavingStageIndex] = useState(null);
+
+  async function loadAtmState(atm, baseChecklist, existingDraft = null) {
+    if (!atm) return;
+    const atmId = atm.atmId;
+
+    // Check MongoDB for any previously submitted stages for this ATM
+    let prevAudit = null;
+    try {
+      const res = await api.get(`/audits/atm/${atmId}`);
+      prevAudit = res.data;
+    } catch (e) {
+      // No existing audit for this ATM yet
+    }
+
+    const initialStages = buildInitialStages(baseChecklist);
+    const prevStages = prevAudit?.stages || [];
+    const draftStages = existingDraft?.stages || [];
+
+    const merged = initialStages.map((stage) => {
+      const ps = prevStages.find((s) => s.stageId === stage.stageId || s.stageName === stage.stageName);
+      const ds = draftStages.find((s) => s.stageId === stage.stageId || s.stageName === stage.stageName);
+
+      return {
+        ...stage,
+        questions: stage.questions.map((q) => {
+          const pq = ps?.questions?.find((x) => x.questionId === q.questionId || x.code === q.code);
+          const dq = ds?.questions?.find((x) => x.questionId === q.questionId || x.code === q.code);
+
+          return {
+            ...q,
+            answer: dq?.answer || pq?.answer || '',
+            reason: dq?.reason || pq?.reason || '',
+            photos: (dq?.photos && dq.photos.length) ? dq.photos : (pq?.photos && pq.photos.length) ? pq.photos : [],
+          };
+        }),
+      };
+    });
+
+    const savedSet = new Set(prevStages.map((s) => s.stageId || s.stageName));
+    setSavedStageIds(savedSet);
+
+    // Photos: draft photos > prev audit photos > []
+    const restoredPhotos = (existingDraft?.photos && existingDraft.photos.length)
+      ? existingDraft.photos
+      : (prevAudit?.photos && prevAudit.photos.length)
+      ? prevAudit.photos
+      : [];
+    setPhotos(restoredPhotos);
+
+    // Audit ID & continuing state
+    if (prevAudit?._id) {
+      setExistingAuditId(prevAudit._id);
+      setContinuingAudit(true);
+      setStarted(true);
+    } else if (existingDraft?.existingAuditId) {
+      setExistingAuditId(existingDraft.existingAuditId);
+      setContinuingAudit(!!existingDraft.continuingAudit);
+      setStarted(!!existingDraft.started);
+    } else {
+      setExistingAuditId(null);
+      setContinuingAudit(false);
+      setStarted(restoredPhotos.length > 0 || (existingDraft && !!existingDraft.started));
+    }
+
+    setStages(merged);
+
+    // Determine initial stageIndex:
+    // If draft had a specific stageIndex, respect it
+    // Else find the first incomplete/unsaved stage
+    if (Number.isInteger(existingDraft?.stageIndex)) {
+      setStageIndex(existingDraft.stageIndex);
+    } else if (savedSet.size > 0) {
+      const firstIncompleteIdx = merged.findIndex((st) => !savedSet.has(st.stageId) && !savedSet.has(st.stageName));
+      setStageIndex(firstIncompleteIdx !== -1 ? firstIncompleteIdx : 0);
+    } else {
+      setStageIndex(0);
+    }
+
+    if (existingDraft) {
+      setDraftRestored(true);
+      setDraftSource(existingDraft.lastDevice || (existingDraft.isFromCloud ? 'Cloud' : 'Device'));
+      if (existingDraft.savedAt) setLastSavedAt(new Date(existingDraft.savedAt));
+    } else {
+      setDraftRestored(false);
+      setDraftSource('');
+      setLastSavedAt(null);
+    }
+  }
+
   useEffect(() => {
     const preselectedAtmId = searchParams.get('atmId');
-    const isContinue = searchParams.get('continue') === 'true';
 
     Promise.all([
       api.get('/checklist'),
       api.get('/atms/mine'),
       user?.id ? loadDraftFromStorage(user.id, preselectedAtmId) : Promise.resolve(null),
     ])
-      .then(([checklistRes, atmsRes, draft]) => {
+      .then(async ([checklistRes, atmsRes, draft]) => {
         setChecklistStages(checklistRes.data);
         setAssignedAtms(atmsRes.data);
 
         const reqAtm = preselectedAtmId ? String(preselectedAtmId).trim().toLowerCase() : null;
         const draftAtm = draft?.selectedAtm?.atmId ? String(draft.selectedAtm.atmId).trim().toLowerCase() : null;
 
-        // Draft is ONLY valid if:
-        // 1. No specific ATM was requested in URL (loaded /audit/new directly)
-        // 2. OR the draft belongs to the EXACT preselected ATM!
         const isDraftValid = Boolean(draft && draft.selectedAtm && (!reqAtm || draftAtm === reqAtm));
 
-        if (isDraftValid) {
-          setSelectedAtm(draft.selectedAtm);
-          setPhotos(draft.photos || []);
-          setStages(draft.stages?.length ? draft.stages : buildInitialStages(checklistRes.data));
-          setStageIndex(draft.stageIndex || 0);
-          setStarted(!!draft.started);
-          if (draft.existingAuditId) setExistingAuditId(draft.existingAuditId);
-          if (draft.continuingAudit) setContinuingAudit(draft.continuingAudit);
-          setDraftRestored(true);
-          setDraftSource(draft.lastDevice || (draft.isFromCloud ? 'Cloud' : 'Device'));
-          if (draft.savedAt) setLastSavedAt(new Date(draft.savedAt));
-        } else if (preselectedAtmId) {
+        if (preselectedAtmId) {
           const match = atmsRes.data.find(
             (a) => a.atmId?.toLowerCase() === reqAtm || a._id === preselectedAtmId
           );
           if (match) setSelectedAtm(match);
-          setPhotos([]);
-          setStarted(false);
-          setExistingAuditId(null);
-          setContinuingAudit(false);
-          setDraftRestored(false);
-          setDraftSource('');
-          setLastSavedAt(null);
-
-          const initial = buildInitialStages(checklistRes.data);
-
-          if (isContinue) {
-            api
-              .get(`/audits/atm/${preselectedAtmId}`)
-              .then((auditRes) => {
-                const prev = auditRes.data;
-                if (prev) {
-                  setExistingAuditId(prev._id);
-                  setContinuingAudit(true);
-                  if (prev.photos?.length) setPhotos(prev.photos);
-                  setStarted(true);
-
-                  const merged = initial.map((stage) => {
-                    const prevStage = prev.stages?.find(
-                      (ps) => ps.stageId === stage.stageId || ps.stageName === stage.stageName
-                    );
-                    if (!prevStage) return stage;
-                    return {
-                      ...stage,
-                      questions: stage.questions.map((q) => {
-                        const prevQ = prevStage.questions?.find(
-                          (pq) => pq.questionId === q.questionId || pq.code === q.code
-                        );
-                        if (!prevQ) return q;
-                        return {
-                          ...q,
-                          answer: prevQ.answer || '',
-                          reason: prevQ.reason || '',
-                          photos: prevQ.photos || [],
-                        };
-                      }),
-                    };
-                  });
-                  setStages(merged);
-                  const nextIndex = Math.min(prev.stages?.length || 0, merged.length - 1);
-                  setStageIndex(nextIndex);
-                } else {
-                  setStages(initial);
-                }
-              })
-              .catch(() => {
-                setStages(initial);
-              });
-          } else {
-            setStages(initial);
-          }
+          await loadAtmState(match || { atmId: preselectedAtmId }, checklistRes.data, isDraftValid ? draft : null);
+        } else if (isDraftValid) {
+          setSelectedAtm(draft.selectedAtm);
+          await loadAtmState(draft.selectedAtm, checklistRes.data, draft);
         } else {
           setPhotos([]);
           setStarted(false);
@@ -215,6 +248,7 @@ export default function AuditForm() {
           setDraftRestored(false);
           setDraftSource('');
           setLastSavedAt(null);
+          setSavedStageIds(new Set());
           setStages(buildInitialStages(checklistRes.data));
         }
       })
@@ -304,42 +338,21 @@ export default function AuditForm() {
 
   async function selectAtm(atm) {
     if (!atm) return;
-    const newAtmId = atm.atmId;
     setSelectedAtm(atm);
     setAtmSearch('');
     setAtmDropdownOpen(false);
     setError('');
+    setStageSuccessMessage('');
 
-    // Check if this newly selected ATM already has a saved draft
+    let existingDraft = null;
     if (user?.id) {
-      const existingDraft = await loadDraftFromStorage(user.id, newAtmId);
-      if (
-        existingDraft &&
-        existingDraft.selectedAtm?.atmId?.toLowerCase() === newAtmId.toLowerCase()
-      ) {
-        setPhotos(existingDraft.photos || []);
-        setStages(existingDraft.stages?.length ? existingDraft.stages : buildInitialStages(checklistStages));
-        setStageIndex(existingDraft.stageIndex || 0);
-        setStarted(!!existingDraft.started);
-        if (existingDraft.existingAuditId) setExistingAuditId(existingDraft.existingAuditId);
-        if (existingDraft.continuingAudit) setContinuingAudit(existingDraft.continuingAudit);
-        setDraftRestored(true);
-        setDraftSource(existingDraft.lastDevice || (existingDraft.isFromCloud ? 'Cloud' : 'Device'));
-        if (existingDraft.savedAt) setLastSavedAt(new Date(existingDraft.savedAt));
-        return;
+      const d = await loadDraftFromStorage(user.id, atm.atmId);
+      if (d && d.selectedAtm?.atmId?.toLowerCase() === atm.atmId.toLowerCase()) {
+        existingDraft = d;
       }
     }
 
-    // Otherwise, start fresh for this newly picked ATM
-    setPhotos([]);
-    setStages(buildInitialStages(checklistStages));
-    setStageIndex(0);
-    setStarted(false);
-    setExistingAuditId(null);
-    setContinuingAudit(false);
-    setDraftRestored(false);
-    setDraftSource('');
-    setLastSavedAt(null);
+    await loadAtmState(atm, checklistStages, existingDraft);
   }
 
   function closeAtmDropdownSoon() {
@@ -524,26 +537,41 @@ export default function AuditForm() {
     setStageIndex((i) => Math.max(0, i - 1));
   }
 
-  async function handleSubmitStages(targetCount) {
-    setError('');
+  const allStagesCompleted = useMemo(() => {
+    return stages.length > 0 && stages.every((s) => isStageComplete(s));
+  }, [stages]);
 
-    const count = targetCount || (stageIndex + 1);
-    for (let i = 0; i < count; i++) {
-      const stageError = validateStageByIndex(i);
-      if (stageError) {
-        setStageIndex(i);
-        setError(stageError);
-        return;
-      }
+  async function handleSaveStage(targetIndex, { advance = false, finish = false } = {}) {
+    setError('');
+    setStageSuccessMessage('');
+
+    const targetStage = stages[targetIndex];
+    if (!targetStage) return;
+
+    // Validate the target stage
+    const validationError = validateStageByIndex(targetIndex);
+    if (validationError) {
+      setStageIndex(targetIndex);
+      setError(validationError);
+      return;
     }
 
-    const stagesToSubmit = stages.slice(0, count);
+    // ATM photos check
+    if (!photos || photos.length === 0) {
+      setError('At least one ATM photo is required to save the audit.');
+      return;
+    }
 
     setSubmitting(true);
+    setSavingStageIndex(targetIndex);
+
     try {
+      // Include any stage that is complete (or at minimum the target stage)
+      const stagesToSubmit = stages.filter((st, idx) => idx === targetIndex || isStageComplete(st));
+
       const payload = {
         atmId: selectedAtm.atmId,
-        area: selectedAtm.area?.name,
+        area: selectedAtm.area?.name || selectedAtm.zone || 'General',
         photos,
         stages: stagesToSubmit,
       };
@@ -551,17 +579,95 @@ export default function AuditForm() {
         payload.auditId = existingAuditId;
       }
 
-      await api.post('/audits', payload);
+      const res = await api.post('/audits', payload);
+      const updatedAudit = res.data;
+
+      if (updatedAudit._id) {
+        setExistingAuditId(updatedAudit._id);
+        setContinuingAudit(true);
+      }
+
+      // Update saved stages tracking
+      const newlySaved = new Set((updatedAudit.stages || []).map((s) => s.stageId || s.stageName));
+      setSavedStageIds(newlySaved);
+
+      // Check if all 3 stages are now submitted in DB
+      const isAllDone = updatedAudit.stages && updatedAudit.stages.length >= Math.min(3, stages.length);
+
+      if (finish || isAllDone) {
+        if (user?.id) {
+          await clearDraftFromStorage(user.id, selectedAtm?.atmId);
+        }
+        setSubmittedStagesCount(updatedAudit.stages?.length || 1);
+        setSuccess(true);
+      } else {
+        setStageSuccessMessage(
+          `✅ Stage ${targetIndex + 1} (${targetStage.stageName}) saved! (${updatedAudit.stages?.length || 1}/${stages.length} stages saved)`
+        );
+
+        if (advance && targetIndex < stages.length - 1) {
+          setStageIndex(targetIndex + 1);
+        }
+      }
+    } catch (err) {
+      console.error('Stage save error:', err);
+      setError(err.response?.data?.message || 'Failed to save stage. Please try again.');
+    } finally {
+      setSubmitting(false);
+      setSavingStageIndex(null);
+    }
+  }
+
+  async function handleSubmitAllStages() {
+    setError('');
+    setStageSuccessMessage('');
+
+    // Validate all stages
+    for (let i = 0; i < stages.length; i++) {
+      const stageError = validateStageByIndex(i);
+      if (stageError) {
+        setStageIndex(i);
+        setError(`Cannot submit full audit: ${stageError}`);
+        return;
+      }
+    }
+
+    if (!photos || photos.length === 0) {
+      setError('At least one ATM photo is required to submit the audit.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        atmId: selectedAtm.atmId,
+        area: selectedAtm.area?.name || selectedAtm.zone || 'General',
+        photos,
+        stages,
+      };
+      if (existingAuditId) {
+        payload.auditId = existingAuditId;
+      }
+
+      const res = await api.post('/audits', payload);
       if (user?.id) {
         await clearDraftFromStorage(user.id, selectedAtm?.atmId);
       }
-      setSubmittedStagesCount(count);
+      setSubmittedStagesCount(res.data?.stages?.length || stages.length);
       setSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to submit audit');
+      console.error('Submit all stages error:', err);
+      setError(err.response?.data?.message || 'Failed to submit full audit');
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleSubmitStages(targetCount) {
+    if (targetCount >= stages.length) {
+      return handleSubmitAllStages();
+    }
+    return handleSaveStage(targetCount - 1, { finish: true });
   }
 
   async function startNewAudit() {
@@ -581,6 +687,8 @@ export default function AuditForm() {
     setDraftRestored(false);
     setDraftSource('');
     setLastSavedAt(null);
+    setSavedStageIds(new Set());
+    setStageSuccessMessage('');
   }
 
   async function handleDiscardDraft() {
@@ -590,6 +698,28 @@ export default function AuditForm() {
       )
     ) {
       await startNewAudit();
+    }
+  }
+
+  async function handleAddContact() {
+    if (!editContactName.trim() || !editContactPhone.trim()) {
+      alert('Please provide both name and phone number');
+      return;
+    }
+    setUpdatingContact(true);
+    try {
+      const res = await api.patch(`/atms/${selectedAtm._id}/contact`, {
+        newName: editContactName,
+        newPhone: editContactPhone
+      });
+      setSelectedAtm(prev => ({ ...prev, additionalContacts: res.data.additionalContacts }));
+      setEditContactName('');
+      setEditContactPhone('');
+      setIsEditingContact(false);
+    } catch (err) {
+      alert('Failed to add contact info');
+    } finally {
+      setUpdatingContact(false);
     }
   }
 
@@ -833,21 +963,46 @@ export default function AuditForm() {
                   {selectedAtm.state && <span> &bull; <strong>State:</strong> {selectedAtm.state}</span>}
                 </div>
               )}
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '0.82rem' }}>
-                {selectedAtm.inchargeName && (
-                  <span>
-                    👤 <strong>In-Charge:</strong> {selectedAtm.inchargeName} {selectedAtm.inchargeDesig && `(${selectedAtm.inchargeDesig})`}
-                  </span>
-                )}
-                {selectedAtm.inchargeContact && (
-                  <span>
-                    📞 <strong>Contact:</strong> <a href={`tel:${selectedAtm.inchargeContact}`}>{selectedAtm.inchargeContact}</a>
-                  </span>
-                )}
-                {selectedAtm.bic && (
-                  <span>
-                    🏷️ <strong>BIC:</strong> {selectedAtm.bic}
-                  </span>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '0.82rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      👤 <strong>In-Charge:</strong> {selectedAtm.inchargeName || 'Not Provided'} {selectedAtm.inchargeDesig && `(${selectedAtm.inchargeDesig})`}
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      📞 <strong>Contact:</strong> {selectedAtm.inchargeContact ? <a href={`tel:${selectedAtm.inchargeContact}`}>{selectedAtm.inchargeContact}</a> : 'Not Provided'}
+                    </span>
+                    {selectedAtm.bic && !isEditingContact && (
+                      <span>
+                        🏷️ <strong>BIC:</strong> {selectedAtm.bic}
+                      </span>
+                    )}
+                  </div>
+                  {selectedAtm.additionalContacts && selectedAtm.additionalContacts.map((contact, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0369a1' }}>
+                        👤 <strong>Additional Contact:</strong> {contact.name}
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0369a1' }}>
+                        📞 <strong>Phone:</strong> <a href={`tel:${contact.phone}`}>{contact.phone}</a>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {isEditingContact ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', width: '100%', background: '#ffffff', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}>
+                    <input type="text" placeholder="New Contact Name" value={editContactName} onChange={e => setEditContactName(e.target.value)} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                    <input type="text" placeholder="Phone Number" value={editContactPhone} onChange={e => setEditContactPhone(e.target.value)} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                    <button type="button" onClick={handleAddContact} disabled={updatingContact} style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#059669', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>{updatingContact ? 'Saving...' : 'Save'}</button>
+                    <button type="button" onClick={() => setIsEditingContact(false)} style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => {
+                    setEditContactName('');
+                    setEditContactPhone('');
+                    setIsEditingContact(true);
+                  }} style={{ fontSize: '0.78rem', background: 'none', border: 'none', color: '#0369a1', cursor: 'pointer', textDecoration: 'underline' }}>➕ Add Contact Info</button>
                 )}
               </div>
 
@@ -1109,6 +1264,43 @@ export default function AuditForm() {
                   📍 {selectedAtm.address} {selectedAtm.pincode ? `(PIN: ${selectedAtm.pincode})` : ''}
                 </p>
               )}
+              <div style={{ marginTop: 8, display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '0.82rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      👤 <strong>In-Charge:</strong> {selectedAtm.inchargeName || 'Not Provided'} {selectedAtm.inchargeDesig && `(${selectedAtm.inchargeDesig})`}
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      📞 <strong>Contact:</strong> {selectedAtm.inchargeContact ? <a href={`tel:${selectedAtm.inchargeContact}`}>{selectedAtm.inchargeContact}</a> : 'Not Provided'}
+                    </span>
+                  </div>
+                  {selectedAtm.additionalContacts && selectedAtm.additionalContacts.map((contact, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0369a1' }}>
+                        👤 <strong>Additional Contact:</strong> {contact.name}
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0369a1' }}>
+                        📞 <strong>Phone:</strong> <a href={`tel:${contact.phone}`}>{contact.phone}</a>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {isEditingContact ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', width: '100%', background: '#ffffff', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}>
+                    <input type="text" placeholder="New Contact Name" value={editContactName} onChange={e => setEditContactName(e.target.value)} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                    <input type="text" placeholder="Phone Number" value={editContactPhone} onChange={e => setEditContactPhone(e.target.value)} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                    <button type="button" onClick={handleAddContact} disabled={updatingContact} style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#059669', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>{updatingContact ? 'Saving...' : 'Save'}</button>
+                    <button type="button" onClick={() => setIsEditingContact(false)} style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => {
+                    setEditContactName('');
+                    setEditContactPhone('');
+                    setIsEditingContact(true);
+                  }} style={{ fontSize: '0.78rem', background: 'none', border: 'none', color: '#0369a1', cursor: 'pointer', textDecoration: 'underline' }}>➕ Add Contact Info</button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1174,20 +1366,38 @@ export default function AuditForm() {
             const answeredCount = getStageAnsweredCount(stage);
             const totalCount = stage.questions?.length || 0;
             const isActive = i === stageIndex;
+            const isSaved = savedStageIds.has(stage.stageId) || savedStageIds.has(stage.stageName);
             return (
               <button
                 key={stage.stageId}
                 type="button"
                 onClick={() => {
                   setError('');
+                  setStageSuccessMessage('');
                   setStageIndex(i);
                 }}
                 className={`stage-pill ${isActive ? 'active' : isComplete ? 'done' : ''}`}
                 style={{
                   cursor: 'pointer',
-                  border: isActive ? '2px solid var(--color-primary)' : '1px solid #cbd5e1',
-                  background: isActive ? '#eff6ff' : isComplete ? '#ecfdf5' : '#ffffff',
-                  color: isActive ? '#1d4ed8' : isComplete ? '#047857' : '#475569',
+                  border: isActive
+                    ? '2px solid var(--color-primary)'
+                    : isSaved
+                    ? '2px solid #059669'
+                    : '1px solid #cbd5e1',
+                  background: isActive
+                    ? '#eff6ff'
+                    : isSaved
+                    ? '#ecfdf5'
+                    : isComplete
+                    ? '#f0fdf4'
+                    : '#ffffff',
+                  color: isActive
+                    ? '#1d4ed8'
+                    : isSaved
+                    ? '#047857'
+                    : isComplete
+                    ? '#15803d'
+                    : '#475569',
                   padding: '7px 14px',
                   borderRadius: 20,
                   fontSize: '0.84rem',
@@ -1196,27 +1406,78 @@ export default function AuditForm() {
                   alignItems: 'center',
                   gap: 6,
                   transition: 'all 0.15s ease',
+                  boxShadow: isSaved ? '0 1px 3px rgba(5, 150, 105, 0.15)' : 'none',
                 }}
               >
-                <span>{isComplete ? '✅' : isActive ? '👉' : '⚪'}</span>
+                <span>{isSaved ? '💾' : isComplete ? '✅' : isActive ? '👉' : '⚪'}</span>
                 <span>{i + 1}. {stage.stageName}</span>
-                <span
-                  style={{
-                    fontSize: '0.72rem',
-                    opacity: 0.85,
-                    padding: '1px 6px',
-                    borderRadius: 10,
-                    background: 'rgba(0,0,0,0.06)',
-                  }}
-                >
-                  {answeredCount}/{totalCount}
-                </span>
+                {isSaved ? (
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      padding: '1px 6px',
+                      borderRadius: 10,
+                      background: '#a7f3d0',
+                      color: '#065f46',
+                      fontWeight: 700,
+                    }}
+                  >
+                    Saved
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      opacity: 0.85,
+                      padding: '1px 6px',
+                      borderRadius: 10,
+                      background: 'rgba(0,0,0,0.06)',
+                    }}
+                  >
+                    {answeredCount}/{totalCount}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
 
-        {error && <p className="error">{error}</p>}
+        {stageSuccessMessage && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: '10px 14px',
+              borderRadius: 8,
+              background: '#ecfdf5',
+              border: '1px solid #a7f3d0',
+              color: '#047857',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+            }}
+          >
+            <span>{stageSuccessMessage}</span>
+            <button
+              type="button"
+              onClick={() => setStageSuccessMessage('')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#047857',
+                fontWeight: 700,
+                fontSize: '1rem',
+              }}
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
+        {error && <p className="error" style={{ marginTop: 12 }}>{error}</p>}
 
         <div className="questions">
           {currentStage.questions.map((q) => (
@@ -1330,7 +1591,7 @@ export default function AuditForm() {
           <span style={{ fontSize: '0.84rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>💡</span>
             <span>
-              <strong>Flexible Audit:</strong> You can submit <strong>Stage 1 (Hardware)</strong> alone, submit <strong>Stages 1 & 2</strong>, or complete all <strong>3 Stages</strong>.
+              <strong>Independent Stages:</strong> Fill and save each stage separately. Once all 3 stages are saved, they automatically merge into a single complete audit!
             </span>
           </span>
           <span
@@ -1347,7 +1608,7 @@ export default function AuditForm() {
           </span>
         </div>
 
-        <div className="actions" style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="actions" style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: 16 }}>
           <div>
             <button
               type="button"
@@ -1360,12 +1621,40 @@ export default function AuditForm() {
           </div>
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* If on Stage 1 (Hardware) */}
-            {stageIndex === 0 && (
+            {/* Save Current Stage Independently */}
+            <button
+              type="button"
+              onClick={() => handleSaveStage(stageIndex, { advance: false })}
+              disabled={submitting}
+              style={{
+                background: (savedStageIds.has(currentStage?.stageId) || savedStageIds.has(currentStage?.stageName)) ? '#047857' : '#0284c7',
+                color: '#ffffff',
+                fontWeight: 600,
+                padding: '10px 16px',
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(2, 132, 199, 0.2)',
+              }}
+              title={`Save ${currentStage?.stageName} to cloud`}
+            >
+              <span>💾</span>{' '}
+              {submitting && savingStageIndex === stageIndex
+                ? 'Saving Stage...'
+                : (savedStageIds.has(currentStage?.stageId) || savedStageIds.has(currentStage?.stageName))
+                ? `Update Stage ${stageIndex + 1}`
+                : `Save Stage ${stageIndex + 1}`}
+            </button>
+
+            {/* If not last stage: Save & Next OR Next */}
+            {!isLastStage && (
               <>
                 <button
                   type="button"
-                  onClick={() => handleSubmitStages(1)}
+                  onClick={() => handleSaveStage(stageIndex, { advance: true })}
                   disabled={submitting}
                   style={{
                     background: '#059669',
@@ -1380,127 +1669,64 @@ export default function AuditForm() {
                     cursor: 'pointer',
                     boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)',
                   }}
-                  title="Submit only Stage 1 (Hardware Verification) audit for this ATM"
+                  title="Save current stage and proceed to next stage"
                 >
-                  <span>📤</span> {submitting ? 'Submitting...' : 'Submit Stage 1 Only (Hardware)'}
+                  <span>💾</span> Save & Next: Stage {stageIndex + 2} &rarr;
                 </button>
                 <button
                   type="button"
                   onClick={goNext}
-                  style={{
-                    padding: '10px 18px',
-                    fontWeight: 600,
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
-                >
-                  Next: Stage 2 &rarr;
-                </button>
-              </>
-            )}
-
-            {/* If on Stage 2 (Functional) */}
-            {stageIndex === 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => handleSubmitStages(1)}
-                  disabled={submitting}
                   className="btn-secondary"
                   style={{
-                    padding: '9px 14px',
-                    fontSize: '0.85rem',
-                  }}
-                  title="Submit only Stage 1 if you do not wish to submit Stage 2"
-                >
-                  Submit Stage 1 Only
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSubmitStages(2)}
-                  disabled={submitting}
-                  style={{
-                    background: '#0284c7',
-                    color: '#ffffff',
-                    fontWeight: 600,
                     padding: '10px 16px',
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    border: 'none',
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 4px rgba(2, 132, 199, 0.2)',
-                  }}
-                >
-                  <span>📤</span> {submitting ? 'Submitting...' : 'Submit Stages 1 & 2'}
-                </button>
-                <button
-                  type="button"
-                  onClick={goNext}
-                  style={{
-                    padding: '10px 18px',
                     fontWeight: 600,
                     borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
                   }}
                 >
-                  Next: Stage 3 &rarr;
+                  Next Stage &rarr;
                 </button>
               </>
             )}
 
-            {/* If on Stage 3 (Network / Last stage) */}
-            {stageIndex === 2 && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => handleSubmitStages(2)}
-                  disabled={submitting}
-                  className="btn-secondary"
-                  style={{
-                    padding: '9px 14px',
-                    fontSize: '0.85rem',
-                  }}
-                  title="Submit Stages 1 & 2 if Stage 3 is not ready"
-                >
-                  Submit Stages 1 & 2 Only
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSubmitStages(3)}
-                  disabled={submitting}
-                  style={{
-                    background: '#16a34a',
-                    color: '#ffffff',
-                    fontWeight: 700,
-                    padding: '10px 20px',
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    border: 'none',
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 4px rgba(22, 163, 74, 0.25)',
-                  }}
-                >
-                  <span>✅</span> {submitting ? 'Submitting...' : 'Submit Full Audit (All 3 Stages)'}
-                </button>
-              </>
-            )}
-
-            {/* Fallback for any other stage count */}
-            {stageIndex > 2 && (
+            {/* Save & Finish for now (partial exit) */}
+            {savedStageIds.size > 0 && savedStageIds.size < stages.length && (
               <button
                 type="button"
-                onClick={() => handleSubmitStages(stages.length)}
+                onClick={() => handleSaveStage(stageIndex, { finish: true })}
                 disabled={submitting}
+                className="btn-secondary"
+                style={{
+                  padding: '9px 14px',
+                  fontSize: '0.85rem',
+                  color: '#475569',
+                }}
+                title="Save current stage and exit to dashboard"
               >
-                {submitting ? 'Submitting...' : 'Submit Audit'}
+                📤 Save & Exit for Now
+              </button>
+            )}
+
+            {/* Full Audit Submit button (on last stage OR whenever all stages completed) */}
+            {(isLastStage || allStagesCompleted) && (
+              <button
+                type="button"
+                onClick={handleSubmitAllStages}
+                disabled={submitting}
+                style={{
+                  background: '#16a34a',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(22, 163, 74, 0.3)',
+                }}
+              >
+                <span>✅</span> {submitting ? 'Submitting Full Audit...' : 'Submit Full Audit (All 3 Stages)'}
               </button>
             )}
           </div>

@@ -9,7 +9,9 @@
     "dev": "nodemon server.js",
     "seed:admin": "node scripts/seedAdmin.js",
     "seed:checklist": "node scripts/seedChecklistAndAtms.js",
-    "import:excel": "node scripts/importExcel.js"
+    "import:excel": "node scripts/importExcel.js",
+    "db:export": "node scripts/exportDatabase.js",
+    "db:restore": "node scripts/restoreDatabase.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

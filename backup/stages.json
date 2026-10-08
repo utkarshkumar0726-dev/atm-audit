@@ -1,0 +1,26 @@
+[
+  {
+    "_id": "6ab11c228e311fa7a5a8cb6f",
+    "name": "A. HARDWARE VERIFICATION",
+    "order": 0,
+    "createdAt": "2026-09-21T11:59:30.457Z",
+    "updatedAt": "2026-09-21T11:59:30.457Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c228e311fa7a5a8cb7a",
+    "name": "B. FUNCTIONAL & QUALITY TESTING",
+    "order": 1,
+    "createdAt": "2026-09-21T11:59:30.971Z",
+    "updatedAt": "2026-09-21T11:59:30.971Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ab11c238e311fa7a5a8cb8a",
+    "name": "C. NETWORK & CYBER SECURITY",
+    "order": 2,
+    "createdAt": "2026-09-21T11:59:31.402Z",
+    "updatedAt": "2026-09-21T11:59:31.402Z",
+    "__v": 0
+  }
+]
