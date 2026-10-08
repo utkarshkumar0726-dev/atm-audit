@@ -6,7 +6,13 @@ export default function ProtectedRoute({ role, children }) {
 
   if (loading) return <p style={{ padding: 24 }}>Loading...</p>;
   if (!user) return <Navigate to="/login" replace />;
-  if (role && user.role !== role) return <Navigate to="/login" replace />;
+  if (role) {
+    if (Array.isArray(role)) {
+      if (!role.includes(user.role)) return <Navigate to="/login" replace />;
+    } else if (user.role !== role) {
+      return <Navigate to="/login" replace />;
+    }
+  }
 
   return children;
 }

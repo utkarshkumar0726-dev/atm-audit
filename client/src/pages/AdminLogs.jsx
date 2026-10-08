@@ -28,6 +28,86 @@ function timeAgo(dateStr) {
   return `${diffDays}d ago`;
 }
 
+export function getAuditBadge(action = '') {
+  const act = String(action || '').toUpperCase();
+
+  if (act === 'AUDIT_ALL_STAGES_COMPLETED' || act === 'FULL_AUDIT_SUBMITTED') {
+    return {
+      label: 'All 3 Stages Completed',
+      icon: '🎉',
+      bg: '#ecfdf5',
+      color: '#047857',
+      border: '#a7f3d0',
+      description: 'Auditor completed all 3 stages for this ATM',
+    };
+  }
+
+  if (act === 'AUDIT_DELETED') {
+    return {
+      label: 'Audit Deleted',
+      icon: '🗑️',
+      bg: '#fef2f2',
+      color: '#b91c1c',
+      border: '#fecaca',
+      description: 'Audit record deleted by administrator',
+    };
+  }
+
+  if (act.includes('STAGE_2') || act.includes('FUNCTIONAL CHECKS')) {
+    return {
+      label: 'Stage 2 (Functional) Merged',
+      icon: '🔄',
+      bg: '#eff6ff',
+      color: '#1d4ed8',
+      border: '#bfdbfe',
+      description: 'Stage 2 checklist & photos merged into audit record',
+    };
+  }
+
+  if (act.includes('STAGE_3') || act.includes('FINAL CHECKS')) {
+    return {
+      label: 'Stage 3 (Final) Merged',
+      icon: '🔄',
+      bg: '#eff6ff',
+      color: '#1d4ed8',
+      border: '#bfdbfe',
+      description: 'Stage 3 checklist merged into audit record',
+    };
+  }
+
+  if (act.startsWith('AUDIT_STAGE_') && act.endsWith('_UPDATED')) {
+    const rawStage = action.replace(/^AUDIT_STAGE_/i, '').replace(/_UPDATED$/i, '').trim();
+    return {
+      label: `${rawStage || 'Stage'} Merged`,
+      icon: '🔄',
+      bg: '#eff6ff',
+      color: '#1d4ed8',
+      border: '#bfdbfe',
+      description: 'Audit stage successfully updated & merged',
+    };
+  }
+
+  if (act === 'AUDIT_INITIAL_STAGE_SUBMITTED' || act === 'STAGE_1_SUBMITTED') {
+    return {
+      label: 'Initial / Stage 1 Submitted',
+      icon: '📦',
+      bg: '#fef3c7',
+      color: '#b45309',
+      border: '#fde68a',
+      description: 'Initial audit stage created, pending subsequent stages',
+    };
+  }
+
+  return {
+    label: action ? action.replace(/_/g, ' ') : 'Audit Submitted',
+    icon: '📋',
+    bg: '#f1f5f9',
+    color: '#334155',
+    border: '#cbd5e1',
+    description: 'Audit activity recorded',
+  };
+}
+
 export default function AdminLogs() {
   const { user, logout } = useAuth();
 
@@ -48,6 +128,12 @@ export default function AdminLogs() {
 
   // Filters for Audit Logs
   const [auditSearch, setAuditSearch] = useState('');
+  const [auditActionFilter, setAuditActionFilter] = useState('all');
+  const [auditUserFilter, setAuditUserFilter] = useState('all');
+
+  // Inspector modal state
+  const [selectedAuditLog, setSelectedAuditLog] = useState(null);
+  const [copiedJson, setCopiedJson] = useState(false);
 
   async function fetchLogs() {
     setLoading(true);
@@ -96,9 +182,43 @@ export default function AdminLogs() {
     return list;
   }, [loginLogs, roleFilter, actionFilter, loginSearch]);
 
+  // Unique users found in Audit Logs
+  const uniqueAuditUsers = useMemo(() => {
+    const map = new Map();
+    auditLogs.forEach((l) => {
+      const key = l.auditorUsername || l.auditorName;
+      if (key && !map.has(key)) {
+        map.set(key, {
+          username: l.auditorUsername,
+          name: l.auditorName,
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [auditLogs]);
+
   // Filtered Audit Logs
   const filteredAuditLogs = useMemo(() => {
     let list = auditLogs;
+
+    if (auditActionFilter !== 'all') {
+      if (auditActionFilter === 'completed') {
+        list = list.filter((l) => l.action?.includes('ALL_STAGES') || l.action?.includes('FULL_AUDIT'));
+      } else if (auditActionFilter === 'updated') {
+        list = list.filter((l) => l.action?.includes('UPDATED'));
+      } else if (auditActionFilter === 'initial') {
+        list = list.filter((l) => l.action?.includes('INITIAL') || l.action?.includes('STAGE_1'));
+      } else if (auditActionFilter === 'deleted') {
+        list = list.filter((l) => l.action?.includes('DELETED'));
+      }
+    }
+
+    if (auditUserFilter !== 'all') {
+      list = list.filter(
+        (l) => l.auditorUsername === auditUserFilter || l.auditorName === auditUserFilter
+      );
+    }
+
     if (auditSearch.trim()) {
       const q = auditSearch.toLowerCase().trim();
       list = list.filter(
@@ -111,7 +231,7 @@ export default function AdminLogs() {
       );
     }
     return list;
-  }, [auditLogs, auditSearch]);
+  }, [auditLogs, auditActionFilter, auditUserFilter, auditSearch]);
 
   // Export CSV
   function exportCSV() {
@@ -334,7 +454,7 @@ export default function AdminLogs() {
               whiteSpace: 'nowrap',
             }}
           >
-            <span>📋 Audit Logs (Auditor Only)</span>
+            <span>📋 Audit Logs</span>
             <span
               style={{
                 fontSize: '0.74rem',
@@ -554,18 +674,19 @@ export default function AdminLogs() {
           </div>
         )}
 
-        {/* TAB 2: AUDIT LOGS (SIRF AUDITOR KE ACTIVITIES) */}
+        {/* TAB 2: AUDIT ACTIVITY LOGS */}
         {activeTab === 'audits' && (
           <div>
             {/* Filter Bar */}
-            <div className="filter-bar">
-              <div className="search-input-wrapper">
+            <div className="filter-bar" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div className="search-input-wrapper" style={{ flex: '1 1 260px', position: 'relative' }}>
                 <span className="search-icon">🔍</span>
                 <input
                   type="text"
-                  placeholder="Search audit logs by ATM ID, Auditor Name, Area / Zone, Action..."
+                  placeholder="Search by ATM ID, Auditor Name, Area / Zone, Action..."
                   value={auditSearch}
                   onChange={(e) => setAuditSearch(e.target.value)}
+                  style={{ width: '100%', paddingRight: auditSearch ? 32 : 12 }}
                 />
                 {auditSearch && (
                   <button
@@ -578,6 +699,50 @@ export default function AdminLogs() {
                   </button>
                 )}
               </div>
+
+              {/* Action Filter */}
+              <select
+                className="filter-select"
+                value={auditActionFilter}
+                onChange={(e) => setAuditActionFilter(e.target.value)}
+                style={{ flex: '0 1 210px' }}
+              >
+                <option value="all">All Audit Actions</option>
+                <option value="completed">🎉 All 3 Stages Completed</option>
+                <option value="updated">🔄 Stage Updated / Merged</option>
+                <option value="initial">📦 Stage 1 / Initial Submitted</option>
+                <option value="deleted">🗑️ Audit Deleted</option>
+              </select>
+
+              {/* User Filter */}
+              <select
+                className="filter-select"
+                value={auditUserFilter}
+                onChange={(e) => setAuditUserFilter(e.target.value)}
+                style={{ flex: '0 1 180px' }}
+              >
+                <option value="all">All Users / Performers</option>
+                {uniqueAuditUsers.map((u) => (
+                  <option key={u.username || u.name} value={u.username || u.name}>
+                    {u.name || u.username}
+                  </option>
+                ))}
+              </select>
+
+              {(auditSearch || auditActionFilter !== 'all' || auditUserFilter !== 'all') && (
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => {
+                    setAuditSearch('');
+                    setAuditActionFilter('all');
+                    setAuditUserFilter('all');
+                  }}
+                  style={{ fontSize: '0.84rem', color: '#0284c7', fontWeight: 600, padding: '4px 8px' }}
+                >
+                  Reset Filters
+                </button>
+              )}
 
               <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginLeft: 'auto', fontWeight: 600 }}>
                 Showing <strong>{filteredAuditLogs.length}</strong> of {auditLogs.length} audit logs
@@ -601,9 +766,9 @@ export default function AdminLogs() {
                 }}
               >
                 <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>📋</div>
-                <h3 style={{ margin: '0 0 6px' }}>No Auditor Audit Logs Found</h3>
+                <h3 style={{ margin: '0 0 6px' }}>No Audit Activity Logs Found</h3>
                 <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-                  No auditor inspection logs matched your search query.
+                  No audit logs matched your search or filter selection.
                 </p>
               </div>
             )}
@@ -614,154 +779,477 @@ export default function AdminLogs() {
                   <thead>
                     <tr>
                       <th style={{ width: 45, textAlign: 'center' }}>#</th>
-                      <th>Action</th>
-                      <th>Auditor</th>
+                      <th>Action / Event</th>
+                      <th>Performed By</th>
                       <th>ATM ID</th>
                       <th>Area / Zone</th>
-                      <th>Inspection Summary</th>
+                      <th>Inspection Progress</th>
                       <th>Date & Time</th>
-                      <th>IP / Origin</th>
+                      <th>IP & Origin</th>
+                      <th style={{ textAlign: 'center', width: 90 }}>Details</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredAuditLogs.map((log, idx) => (
-                      <tr key={log._id || idx}>
-                        <td style={{ textAlign: 'center', color: '#64748b', fontSize: '0.82rem' }}>
-                          {idx + 1}
-                        </td>
-                        <td>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 5,
-                              padding: '4px 10px',
-                              borderRadius: 999,
-                              fontSize: '0.78rem',
-                              fontWeight: 700,
-                              background: '#ecfdf5',
-                              color: '#047857',
-                              border: '1px solid #a7f3d0',
-                            }}
-                          >
-                            <span>✅</span>
-                            <span>Audit Submitted</span>
-                          </span>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div
+                    {filteredAuditLogs.map((log, idx) => {
+                      const badge = getAuditBadge(log.action);
+                      const isUserAdmin =
+                        (log.auditorName || '').toLowerCase().includes('admin') ||
+                        (log.auditorUsername || '').toLowerCase() === 'admin';
+
+                      return (
+                        <tr key={log._id || idx}>
+                          <td style={{ textAlign: 'center', color: '#64748b', fontSize: '0.82rem' }}>
+                            {idx + 1}
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              <span
+                                title={badge.description}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  padding: '4px 10px',
+                                  borderRadius: 999,
+                                  fontSize: '0.78rem',
+                                  fontWeight: 700,
+                                  background: badge.bg,
+                                  color: badge.color,
+                                  border: `1px solid ${badge.border}`,
+                                  width: 'fit-content',
+                                }}
+                              >
+                                <span>{badge.icon}</span>
+                                <span>{badge.label}</span>
+                              </span>
+                              {badge.description && (
+                                <span style={{ fontSize: '0.72rem', color: '#64748b', paddingLeft: 4 }}>
+                                  {badge.description}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div
+                                style={{
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: 8,
+                                  background: isUserAdmin ? '#fef3c7' : '#e0f2fe',
+                                  color: isUserAdmin ? '#b45309' : '#0369a1',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontWeight: 700,
+                                  fontSize: '0.85rem',
+                                  border: `1px solid ${isUserAdmin ? '#fde68a' : '#bae6fd'}`,
+                                }}
+                              >
+                                {isUserAdmin ? '👑' : '👤'}
+                              </div>
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.88rem' }}>
+                                    {log.auditorName || (isUserAdmin ? 'Administrator' : 'Auditor')}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: '0.68rem',
+                                      padding: '1px 6px',
+                                      borderRadius: 4,
+                                      fontWeight: 700,
+                                      textTransform: 'uppercase',
+                                      background: isUserAdmin ? '#fef3c7' : '#eff6ff',
+                                      color: isUserAdmin ? '#92400e' : '#1d4ed8',
+                                    }}
+                                  >
+                                    {isUserAdmin ? 'Admin' : 'Auditor'}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                  @{log.auditorUsername || 'user'}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span
                               style={{
-                                width: 30,
-                                height: 30,
-                                borderRadius: 8,
-                                background: '#f3e8ff',
-                                color: '#7c3aed',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
+                                fontFamily: 'monospace',
                                 fontWeight: 700,
-                                fontSize: '0.8rem',
+                                fontSize: '0.92rem',
+                                color: '#0284c7',
+                                background: '#f0f9ff',
+                                padding: '3px 8px',
+                                borderRadius: 6,
+                                border: '1px solid #bae6fd',
                               }}
                             >
-                              👤
-                            </div>
-                            <div>
-                              <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.88rem' }}>
-                                {log.auditorName || 'Auditor'}
-                              </div>
-                              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                @{log.auditorUsername || 'auditor'}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span
-                            style={{
-                              fontFamily: 'monospace',
-                              fontWeight: 700,
-                              fontSize: '0.92rem',
-                              color: '#0284c7',
-                              background: '#f0f9ff',
-                              padding: '3px 8px',
-                              borderRadius: 6,
-                              border: '1px solid #bae6fd',
-                            }}
-                          >
-                            {log.atmId}
-                          </span>
-                        </td>
-                        <td>
-                          <span
-                            style={{
-                              fontSize: '0.82rem',
-                              padding: '3px 8px',
-                              borderRadius: 6,
-                              background: '#f1f5f9',
-                              color: '#334155',
-                              fontWeight: 600,
-                            }}
-                          >
-                            📍 {log.area || 'General'}
-                          </span>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              {log.atmId}
+                            </span>
+                          </td>
+                          <td>
                             <span
                               style={{
                                 fontSize: '0.82rem',
-                                color: '#047857',
-                                background: '#f0fdf4',
-                                padding: '2px 7px',
+                                padding: '3px 8px',
                                 borderRadius: 6,
-                                border: '1px solid #bbf7d0',
+                                background: '#f1f5f9',
+                                color: '#334155',
                                 fontWeight: 600,
                               }}
                             >
-                              📸 {log.photoCount || 0} Photos
+                              📍 {log.area || 'General'}
                             </span>
-                            {log.stageCount > 0 && (
+                          </td>
+                          <td>
+                            {log.action === 'AUDIT_DELETED' ? (
                               <span
                                 style={{
-                                  fontSize: '0.82rem',
-                                  color: '#4338ca',
-                                  background: '#eef2ff',
-                                  padding: '2px 7px',
+                                  fontSize: '0.8rem',
+                                  color: '#b91c1c',
+                                  background: '#fef2f2',
+                                  padding: '3px 9px',
                                   borderRadius: 6,
-                                  border: '1px solid #c7d2fe',
+                                  border: '1px solid #fecaca',
                                   fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
                                 }}
                               >
-                                📋 {log.stageCount} Stages
+                                <span>⚠️</span>
+                                <span>Record Deleted</span>
                               </span>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <span
+                                  style={{
+                                    fontSize: '0.8rem',
+                                    color: (log.stageCount || 0) >= 3 ? '#047857' : '#4338ca',
+                                    background: (log.stageCount || 0) >= 3 ? '#ecfdf5' : '#eef2ff',
+                                    padding: '2px 8px',
+                                    borderRadius: 6,
+                                    border: `1px solid ${(log.stageCount || 0) >= 3 ? '#a7f3d0' : '#c7d2fe'}`,
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {(log.stageCount || 0) >= 3
+                                    ? '✅ 3/3 Stages (Complete)'
+                                    : `📋 Stage ${log.stageCount || 1} of 3`}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: '0.8rem',
+                                    color: '#0f766e',
+                                    background: '#f0fdfa',
+                                    padding: '2px 8px',
+                                    borderRadius: 6,
+                                    border: '1px solid #ccfbf1',
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  📸 {log.photoCount || 0} Photos
+                                </span>
+                              </div>
                             )}
-                          </div>
-                        </td>
-                        <td>
-                          <div style={{ fontSize: '0.86rem', color: '#1e293b', fontWeight: 500 }}>
-                            {formatDateTime(log.createdAt)}
-                          </div>
-                          <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: 1 }}>
-                            {timeAgo(log.createdAt)}
-                          </div>
-                        </td>
-                        <td>
-                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                            <code>{log.ip || '127.0.0.1'}</code>
-                          </div>
-                          {log.device && (
-                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
-                              {log.device} &middot; {log.browser}
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '0.86rem', color: '#1e293b', fontWeight: 500 }}>
+                              {formatDateTime(log.createdAt)}
                             </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                            <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: 1 }}>
+                              {timeAgo(log.createdAt)}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                              <code
+                                style={{
+                                  background: '#f8fafc',
+                                  padding: '2px 6px',
+                                  borderRadius: 4,
+                                  border: '1px solid #e2e8f0',
+                                }}
+                              >
+                                {log.ip || '127.0.0.1'}
+                              </code>
+                            </div>
+                            {log.device && (
+                              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 3 }}>
+                                {log.device} &middot; {log.browser}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedAuditLog(log)}
+                              style={{
+                                background: 'white',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: 6,
+                                padding: '4px 10px',
+                                fontSize: '0.78rem',
+                                fontWeight: 600,
+                                color: '#0284c7',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                transition: 'all 0.15s ease',
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.borderColor = '#0284c7';
+                                e.currentTarget.style.background = '#f0f9ff';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.borderColor = '#cbd5e1';
+                                e.currentTarget.style.background = 'white';
+                              }}
+                            >
+                              👁️ View
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* AUDIT LOG INSPECTOR MODAL */}
+        {selectedAuditLog && (
+          <div className="modal-backdrop" onClick={() => setSelectedAuditLog(null)}>
+            <div
+              className="modal"
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: 680, padding: 26 }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: 18,
+                  paddingBottom: 14,
+                  borderBottom: '1px solid #e2e8f0',
+                }}
+              >
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>📋</span> Audit Activity Details
+                  </h2>
+                  <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '0.85rem' }}>
+                    Full audit action payload & system metadata recorded in MongoDB.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedAuditLog(null)}
+                  style={{
+                    background: '#f1f5f9',
+                    border: 'none',
+                    borderRadius: 999,
+                    width: 32,
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    color: '#64748b',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Event Status Banner */}
+              {(() => {
+                const badge = getAuditBadge(selectedAuditLog.action);
+                return (
+                  <div
+                    style={{
+                      background: badge.bg,
+                      border: `1px solid ${badge.border}`,
+                      borderRadius: 10,
+                      padding: '12px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: 18,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: '1.4rem' }}>{badge.icon}</span>
+                      <div>
+                        <div style={{ fontWeight: 700, color: badge.color, fontSize: '0.96rem' }}>
+                          {badge.label}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: '#475569' }}>
+                          {badge.description || selectedAuditLog.action}
+                        </div>
+                      </div>
+                    </div>
+                    <code
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.7)',
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontSize: '0.74rem',
+                        fontWeight: 600,
+                        color: badge.color,
+                        border: `1px solid ${badge.border}`,
+                      }}
+                    >
+                      {selectedAuditLog.action}
+                    </code>
+                  </div>
+                );
+              })()}
+
+              {/* Key Attributes Grid */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                  gap: 12,
+                  marginBottom: 20,
+                }}
+              >
+                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                    Target ATM ID
+                  </div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0284c7', fontFamily: 'monospace', marginTop: 3 }}>
+                    {selectedAuditLog.atmId}
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                    Area / Zone
+                  </div>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 600, color: '#1e293b', marginTop: 3 }}>
+                    📍 {selectedAuditLog.area || 'General / Unspecified'}
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                    Performed By
+                  </div>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 600, color: '#1e293b', marginTop: 3 }}>
+                    {selectedAuditLog.auditorName}{' '}
+                    <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                      (@{selectedAuditLog.auditorUsername})
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                    Inspection Content
+                  </div>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 600, color: '#1e293b', marginTop: 3 }}>
+                    📋 {selectedAuditLog.stageCount || 0} Stages &middot; 📸 {selectedAuditLog.photoCount || 0} Photos
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                    Timestamp
+                  </div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b', marginTop: 3 }}>
+                    {formatDateTime(selectedAuditLog.createdAt)}
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: 1 }}>
+                    {new Date(selectedAuditLog.createdAt).toISOString()}
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                    Network & Client
+                  </div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b', marginTop: 3 }}>
+                    IP: <code>{selectedAuditLog.ip || '127.0.0.1'}</code>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 1 }}>
+                    {selectedAuditLog.device} &middot; {selectedAuditLog.browser}
+                  </div>
+                </div>
+              </div>
+
+              {/* Raw JSON Details Accordion */}
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                    Raw Event JSON Record
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(JSON.stringify(selectedAuditLog, null, 2));
+                      setCopiedJson(true);
+                      setTimeout(() => setCopiedJson(false), 2000);
+                    }}
+                    style={{
+                      background: copiedJson ? '#ecfdf5' : 'white',
+                      color: copiedJson ? '#047857' : '#0284c7',
+                      border: `1px solid ${copiedJson ? '#a7f3d0' : '#cbd5e1'}`,
+                      borderRadius: 6,
+                      padding: '3px 9px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {copiedJson ? '✅ Copied to Clipboard' : '📋 Copy JSON'}
+                  </button>
+                </div>
+                <pre
+                  style={{
+                    background: '#0f172a',
+                    color: '#e2e8f0',
+                    padding: 14,
+                    borderRadius: 8,
+                    fontSize: '0.76rem',
+                    overflowX: 'auto',
+                    maxHeight: 180,
+                    margin: 0,
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  {JSON.stringify(selectedAuditLog, null, 2)}
+                </pre>
+              </div>
+
+              {/* Footer */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  marginTop: 20,
+                  paddingTop: 14,
+                  borderTop: '1px solid #e2e8f0',
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setSelectedAuditLog(null)}
+                  style={{ padding: '8px 20px', borderRadius: 8, fontWeight: 600 }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -70,69 +70,93 @@ export default function AdminAuditDetail() {
               Full checklist inspection report for ATM <strong>{audit.atmId}</strong>
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowDeleteModal(true)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 8,
-              background: '#fef2f2',
-              color: '#dc2626',
-              border: '1px solid #fecaca',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            🗑️ Delete Audit
-          </button>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Link
+              to={`/audit/new?atmId=${audit.atmId}`}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 8,
+                background: '#eff6ff',
+                color: '#1d4ed8',
+                border: '1px solid #bfdbfe',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              ✏️ Edit / Update Audit
+            </Link>
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 8,
+                background: '#fef2f2',
+                color: '#dc2626',
+                border: '1px solid #fecaca',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              🗑️ Delete Audit
+            </button>
+          </div>
         </div>
 
-        <p>
-          <strong>ATM ID:</strong> {audit.atmId}
-        </p>
-        <p>
-          <strong>Area:</strong> {audit.area}
-        </p>
-        <p>
-          <strong>Auditor:</strong> {audit.auditor?.name} ({audit.auditor?.username})
-        </p>
-        <p>
-          <strong>Submitted:</strong> {new Date(audit.createdAt).toLocaleString()}
-        </p>
-        <p>
-          <strong>Stages Audited:</strong>{' '}
-          <span
-            style={{
-              padding: '3px 8px',
-              borderRadius: 6,
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              background: audit.stages?.length >= 3 ? '#dcfce7' : '#eff6ff',
-              color: audit.stages?.length >= 3 ? '#15803d' : '#1d4ed8',
-              border: audit.stages?.length >= 3 ? '1px solid #bbf7d0' : '1px solid #bfdbfe',
-            }}
-          >
-            {audit.stages?.length >= 3
-              ? '✅ Full Audit (All 3 Stages)'
-              : audit.stages?.length === 2
-              ? '📋 Stages 1 & 2 Completed'
-              : audit.stages?.length === 1
-              ? '📦 Stage 1 (Hardware Verification) Only'
-              : `${audit.stages?.length || 0} Stages`}
-          </span>
-        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16, background: '#f8fafc', padding: 16, borderRadius: 10, border: '1px solid #e2e8f0' }}>
+          <div>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>ATM ID:</span>
+            <div style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: '1.05rem', color: 'var(--color-primary)' }}>
+              {audit.atmId}
+            </div>
+          </div>
+          <div>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Area / Zone:</span>
+            <div style={{ fontWeight: 600 }}>{audit.area}</div>
+          </div>
+          <div>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Auditor:</span>
+            <div style={{ fontWeight: 600 }}>{audit.auditor?.name || 'Unknown'} (@{audit.auditor?.username})</div>
+          </div>
+          <div>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Status:</span>
+            <div>
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  background: audit.isCompleted ? '#dcfce7' : '#fef3c7',
+                  color: audit.isCompleted ? '#15803d' : '#b45309',
+                  border: audit.isCompleted ? '1px solid #bbf7d0' : '1px solid #fde68a',
+                }}
+              >
+                {audit.isCompleted ? '🎉 100% Complete Audit' : `⏳ In Progress (${audit.stages?.length || 0}/3 Stages)`}
+              </span>
+            </div>
+          </div>
+        </div>
 
         {audit.photos?.length > 0 && (
-          <div className="photo-grid photo-grid-view">
-            {audit.photos.map((p, i) => (
-              <div className="photo-grid-item" key={i}>
-                <img src={p} alt={`ATM ${audit.atmId} ${i + 1}`} onClick={() => setLightboxPhoto(p)} />
-              </div>
-            ))}
+          <div style={{ marginBottom: 20 }}>
+            <h3 style={{ fontSize: '1rem', margin: '0 0 10px' }}>ATM Overview Photos ({audit.photos.length})</h3>
+            <div className="photo-grid photo-grid-view">
+              {audit.photos.map((p, i) => (
+                <div className="photo-grid-item" key={i}>
+                  <img src={p} alt={`ATM ${audit.atmId} ${i + 1}`} onClick={() => setLightboxPhoto(p)} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -142,8 +166,14 @@ export default function AdminAuditDetail() {
             {stage.questions.map((q) => (
               <div className="question readonly" key={q.questionId}>
                 <p>{q.questionText}</p>
-                <p className={q.answer === 'yes' ? 'answer-yes' : 'answer-no'}>{q.answer.toUpperCase()}</p>
-                {q.answer === 'no' && <p className="reason">Reason: {q.reason}</p>}
+                {q.answer ? (
+                  <p className={q.answer === 'yes' ? 'answer-yes' : 'answer-no'}>{q.answer.toUpperCase()}</p>
+                ) : (
+                  <p style={{ color: '#94a3b8', fontStyle: 'italic', margin: '4px 0', fontSize: '0.85rem' }}>
+                    ⏳ Unanswered (In-Progress)
+                  </p>
+                )}
+                {q.answer === 'no' && q.reason && <p className="reason">Reason: {q.reason}</p>}
                 {q.photos?.length > 0 && (
                   <div className="photo-grid photo-grid-view">
                     {q.photos.map((p, i) => (

@@ -56,8 +56,28 @@ function mergeAuditStages(existingStages = [], incomingStages = []) {
       (newStage.questions || []).forEach((newQ) => {
         const qKey = String(newQ.questionId || newQ.questionText || '').trim().toLowerCase();
         if (qKey) {
-          // If already answered in new question or updating answer
-          qMap.set(qKey, newQ);
+          const oldQ = qMap.get(qKey);
+          if (oldQ) {
+            const hasNewAnswer = newQ.answer === 'yes' || newQ.answer === 'no';
+            const answer = hasNewAnswer ? newQ.answer : (oldQ.answer || '');
+            const reason = hasNewAnswer
+              ? (newQ.answer === 'no' ? (newQ.reason || '') : '')
+              : (oldQ.reason || '');
+            const photos =
+              Array.isArray(newQ.photos) && newQ.photos.length > 0
+                ? newQ.photos
+                : oldQ.photos || [];
+
+            qMap.set(qKey, {
+              ...oldQ,
+              ...newQ,
+              answer,
+              reason,
+              photos,
+            });
+          } else {
+            qMap.set(qKey, newQ);
+          }
         }
       });
 
@@ -72,7 +92,7 @@ function mergeAuditStages(existingStages = [], incomingStages = []) {
   return result.sort((a, b) => getStageSortOrder(a) - getStageSortOrder(b));
 }
 
-function validateStages(stages) {
+function validateStages(stages, isFinalComplete = false) {
   if (!Array.isArray(stages) || stages.length === 0) {
     return 'stages must be a non-empty array';
   }
@@ -81,11 +101,21 @@ function validateStages(stages) {
       return 'each stage requires stageId, stageName, and a questions array';
     }
     for (const q of stage.questions) {
-      if (!q.questionId || !q.questionText || !['yes', 'no'].includes(q.answer)) {
-        return 'each question requires questionId, questionText, and answer of yes/no';
+      if (!q.questionId || !q.questionText) {
+        return 'each question requires questionId and questionText';
       }
-      if (q.answer === 'no' && !q.reason?.trim()) {
-        return `a reason is required when the answer is "no" (question: ${q.questionText})`;
+      if (isFinalComplete) {
+        if (!['yes', 'no'].includes(q.answer)) {
+          return `Please answer all questions before submitting final audit (missing answer for: "${q.questionText}" in ${stage.stageName})`;
+        }
+        if (q.answer === 'no' && !q.reason?.trim()) {
+          return `A reason is required when the answer is "no" for: "${q.questionText}" in ${stage.stageName}`;
+        }
+      } else {
+        // Partial stage save: allow answer to be empty, or if answered, validate it
+        if (q.answer && !['yes', 'no'].includes(q.answer)) {
+          return `invalid answer value for question: ${q.questionText}`;
+        }
       }
       if (q.photos && (!Array.isArray(q.photos) || !q.photos.every(isImageDataUrl))) {
         return `invalid photos for question: ${q.questionText}`;
@@ -95,10 +125,10 @@ function validateStages(stages) {
   return null;
 }
 
-// POST /api/audits - auditor submits or updates audit stage(s) (Stage 1 alone, Stage 2, Stage 3, or all 3)
-router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
+// POST /api/audits - auditor or admin submits or updates audit stage(s) (Stage 1 alone, Stage 2, Stage 3, or all 3)
+router.post('/', requireAuth, requireRole('auditor', 'admin'), async (req, res) => {
   try {
-    const { atmId, area, photos, stages, auditId } = req.body;
+    const { atmId, area, photos, stages, auditId, isFinalComplete } = req.body;
 
     if (!atmId || !atmId.trim()) {
       return res.status(400).json({ message: 'atmId is required' });
@@ -108,17 +138,22 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
       return res.status(400).json({ message: 'area is required' });
     }
 
-    // Look up any existing audits for this atmId and auditor
+    // Look up any existing audits for this atmId
     let existingAudits = [];
     if (auditId) {
-      const byId = await Audit.findOne({ _id: auditId, auditor: req.user.id });
+      const byId = req.user.role === 'admin'
+        ? await Audit.findById(auditId)
+        : await Audit.findOne({ _id: auditId, auditor: req.user.id });
       if (byId) existingAudits.push(byId);
     }
 
-    const byAtm = await Audit.find({
+    const atmQuery = {
       atmId: { $regex: new RegExp(`^${atmId.trim()}$`, 'i') },
-      auditor: req.user.id,
-    }).sort({ createdAt: -1 });
+    };
+    if (req.user.role !== 'admin') {
+      atmQuery.auditor = req.user.id;
+    }
+    const byAtm = await Audit.find(atmQuery).sort({ createdAt: -1 });
 
     for (const ea of byAtm) {
       if (!existingAudits.some((a) => a._id.toString() === ea._id.toString())) {
@@ -136,7 +171,7 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
       return res.status(400).json({ message: 'At least one ATM photo is required to start the audit' });
     }
 
-    const validationError = validateStages(stages);
+    const validationError = validateStages(stages, Boolean(isFinalComplete));
     if (validationError) {
       return res.status(400).json({ message: validationError });
     }
@@ -167,9 +202,8 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
         audit.photos = photos;
       }
       audit.area = area.trim();
-      await audit.save();
     } else {
-      audit = await Audit.create({
+      audit = new Audit({
         atmId: atmId.trim(),
         area: area.trim(),
         auditor: req.user.id,
@@ -178,20 +212,59 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
       });
     }
 
+    // Check completion criteria:
+    // Requires all 3 stages present and every question answered
+    const hasAll3Stages = (audit.stages || []).length >= 3;
+    const allQuestionsAnswered =
+      hasAll3Stages &&
+      audit.stages.every((st) => {
+        return (
+          Array.isArray(st.questions) &&
+          st.questions.length > 0 &&
+          st.questions.every((q) => {
+            if (q.answer === 'yes') return true;
+            if (q.answer === 'no') return Boolean(q.reason?.trim());
+            return false;
+          })
+        );
+      });
+
+    if (isFinalComplete && allQuestionsAnswered) {
+      audit.isCompleted = true;
+      audit.completedAt = audit.completedAt || new Date();
+      audit.status = 'completed';
+    } else if (audit.isCompleted && allQuestionsAnswered) {
+      // Retain completed status if already complete and still valid
+      audit.status = 'completed';
+    } else {
+      audit.isCompleted = false;
+      audit.status = 'in_progress';
+    }
+
+    await audit.save();
+
     // Record Audit Log event for auditor action
     try {
       const ip = getClientIp(req);
       const { device, browser } = parseUserAgent(req.headers['user-agent']);
-      const totalPhotosCount = (audit.photos?.length || 0) + (
-        audit.stages?.reduce(
-          (acc, s) => acc + (s.questions?.reduce((qAcc, q) => qAcc + (q.photos?.length || 0), 0) || 0),
+      const totalPhotosCount =
+        (audit.photos?.length || 0) +
+        ((audit.stages || []).reduce(
+          (acc, s) =>
+            acc + ((s.questions || []).reduce((qAcc, q) => qAcc + (q.photos?.length || 0), 0) || 0),
           0
-        ) || 0
-      );
+        ) || 0);
 
-      const action = isUpdate
-        ? (audit.stages.length >= 3 ? 'AUDIT_ALL_STAGES_COMPLETED' : `AUDIT_STAGE_${stages.map(s => s.stageName).join('_')}_UPDATED`)
-        : (audit.stages.length >= 3 ? 'FULL_AUDIT_SUBMITTED' : `AUDIT_INITIAL_STAGE_SUBMITTED`);
+      let action = 'AUDIT_STAGE_PROGRESS_SAVED';
+      if (audit.isCompleted) {
+        action = 'AUDIT_ALL_STAGES_COMPLETED';
+      } else if (stages.length === 1 && stages[0]?.stageName) {
+        action = `AUDIT_STAGE_${stages[0].stageName}_UPDATED`;
+      } else if (isUpdate) {
+        action = 'AUDIT_STAGE_UPDATED';
+      } else {
+        action = 'AUDIT_INITIAL_STAGE_SUBMITTED';
+      }
 
       await AuditLog.create({
         audit: audit._id,
@@ -227,8 +300,8 @@ router.post('/', requireAuth, requireRole('auditor'), async (req, res) => {
 
     res.status(isUpdate ? 200 : 201).json(audit);
   } catch (err) {
-    console.error('Create/update audit error:', err);
-    res.status(500).json({ message: 'Server error saving audit' });
+    console.error('Submit audit error:', err);
+    res.status(500).json({ message: 'Server error saving audit stage' });
   }
 });
 
@@ -321,13 +394,14 @@ router.delete('/draft', requireAuth, requireRole('auditor'), async (req, res) =>
   }
 });
 
-// GET /api/audits/atm/:atmId - auditor fetches previous audit for an ATM to continue it
-router.get('/atm/:atmId', requireAuth, requireRole('auditor'), async (req, res) => {
+// GET /api/audits/atm/:atmId - auditor or admin fetches previous audit for an ATM to continue it
+router.get('/atm/:atmId', requireAuth, requireRole('auditor', 'admin'), async (req, res) => {
   try {
-    const audits = await Audit.find({
-      atmId: { $regex: new RegExp(`^${req.params.atmId.trim()}$`, 'i') },
-      auditor: req.user.id,
-    }).sort({ createdAt: -1 });
+    const query = { atmId: { $regex: new RegExp(`^${req.params.atmId.trim()}$`, 'i') } };
+    if (req.user.role !== 'admin') {
+      query.auditor = req.user.id;
+    }
+    const audits = await Audit.find(query).sort({ createdAt: -1 });
 
     if (!audits || audits.length === 0) {
       return res.status(404).json({ message: 'No previous audit found for this ATM' });

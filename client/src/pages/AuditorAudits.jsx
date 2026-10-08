@@ -123,6 +123,48 @@ const POPULAR_LOCALITIES = [
   'Punjabi Bagh',
 ];
 
+function getStageStats(stage) {
+  if (!stage || !Array.isArray(stage.questions)) return { answered: 0, total: 0, isComplete: false };
+  const total = stage.questions.length;
+  const answered = stage.questions.filter((q) => q.answer === 'yes' || q.answer === 'no').length;
+  const isComplete =
+    total > 0 &&
+    stage.questions.every((q) => {
+      if (q.answer === 'yes') return true;
+      if (q.answer === 'no') return Boolean(q.reason?.trim());
+      return false;
+    });
+  return { answered, total, isComplete };
+}
+
+function findStageByNumber(audit, stageNum) {
+  if (!audit || !Array.isArray(audit.stages)) return null;
+  return audit.stages.find((s, idx) => {
+    const combined = `${s.stageName || ''} ${s.stageId || ''}`.toLowerCase();
+    if (stageNum === 1) return idx === 0 || combined.includes('hardware') || combined.includes('stage 1');
+    if (stageNum === 2) return idx === 1 || combined.includes('functional') || combined.includes('stage 2');
+    if (stageNum === 3) return idx === 2 || combined.includes('network') || combined.includes('security') || combined.includes('stage 3');
+    return false;
+  });
+}
+
+function hasStageActivity(audit, stageNum) {
+  const stage = findStageByNumber(audit, stageNum);
+  if (!stage) return false;
+  const stats = getStageStats(stage);
+  const hasPhotos = (stage.questions || []).some((q) => q.photos && q.photos.length > 0);
+  return stats.answered > 0 || hasPhotos;
+}
+
+function isAuditComplete(audit) {
+  if (audit.isCompleted) return true;
+  if (!audit || !Array.isArray(audit.stages) || audit.stages.length < 3) return false;
+  return audit.stages.every((st) => {
+    const stats = getStageStats(st);
+    return stats.total > 0 && stats.isComplete;
+  });
+}
+
 export default function AuditorAudits() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -132,6 +174,8 @@ export default function AuditorAudits() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [searchScopeTab, setSearchScopeTab] = useState('all'); // 'all' | 'direct' | 'nearby'
+  // 4 Submodules: 'all' | 'stage1' | 'stage2' | 'stage3' | 'completed'
+  const [activeSubmodule, setActiveSubmodule] = useState('all');
 
   // Audit detail modal
   const [selectedAuditId, setSelectedAuditId] = useState(null);
@@ -284,12 +328,40 @@ export default function AuditorAudits() {
     };
   }, [audits, zoneFilter, search, searchScopeTab]);
 
-  const filteredAudits = searchResults.displayedList;
+  // Submodule counts
+  const submoduleCounts = useMemo(() => {
+    const stage1 = audits.filter((a) => hasStageActivity(a, 1)).length;
+    const stage2 = audits.filter((a) => hasStageActivity(a, 2)).length;
+    const stage3 = audits.filter((a) => hasStageActivity(a, 3)).length;
+    const completed = audits.filter((a) => isAuditComplete(a)).length;
+    return {
+      all: audits.length,
+      stage1,
+      stage2,
+      stage3,
+      completed,
+    };
+  }, [audits]);
 
-  // Group filtered audits by Area
+  // Filtered by Active Submodule
+  const displayedAudits = useMemo(() => {
+    let list = searchResults.displayedList;
+    if (activeSubmodule === 'stage1') {
+      list = list.filter((a) => hasStageActivity(a, 1));
+    } else if (activeSubmodule === 'stage2') {
+      list = list.filter((a) => hasStageActivity(a, 2));
+    } else if (activeSubmodule === 'stage3') {
+      list = list.filter((a) => hasStageActivity(a, 3));
+    } else if (activeSubmodule === 'completed') {
+      list = list.filter((a) => isAuditComplete(a));
+    }
+    return list;
+  }, [searchResults.displayedList, activeSubmodule]);
+
+  // Group displayed audits by Area
   const auditsByArea = useMemo(() => {
     const groups = new Map();
-    filteredAudits.forEach((a) => {
+    displayedAudits.forEach((a) => {
       const areaName = a.area || 'General';
       if (!groups.has(areaName)) {
         groups.set(areaName, []);
@@ -303,7 +375,7 @@ export default function AuditorAudits() {
         total: list.length,
       }))
       .sort((a, b) => a.areaName.localeCompare(b.areaName));
-  }, [filteredAudits]);
+  }, [displayedAudits]);
 
   const stats = useMemo(() => {
     const totalSubmitted = audits.length;
@@ -320,136 +392,212 @@ export default function AuditorAudits() {
             <tr>
               <th>ATM ID</th>
               <th>Area / Zone</th>
-              <th>Submitted Date & Time</th>
-              <th>Stages Audited</th>
+              <th>📦 Stage 1 (Hardware)</th>
+              <th>🔄 Stage 2 (Functional)</th>
+              <th>⚡ Stage 3 (Security)</th>
+              <th>Audit Status</th>
               <th>Photos</th>
+              <th>Date</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {list.map((audit) => (
-              <tr key={audit._id}>
-                <td>
-                  <span
-                    style={{
-                      fontFamily: 'monospace',
-                      fontWeight: 700,
-                      fontSize: '0.95rem',
-                      color: 'var(--color-primary)',
-                      background: 'rgba(37, 99, 235, 0.08)',
-                      padding: '4px 8px',
-                      borderRadius: 6,
-                    }}
-                  >
-                    {audit.atmId}
-                  </span>
-                </td>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {list.map((audit) => {
+              const s1 = findStageByNumber(audit, 1);
+              const s2 = findStageByNumber(audit, 2);
+              const s3 = findStageByNumber(audit, 3);
+              const s1Stats = getStageStats(s1);
+              const s2Stats = getStageStats(s2);
+              const s3Stats = getStageStats(s3);
+              const isComplete = isAuditComplete(audit);
+
+              return (
+                <tr key={audit._id}>
+                  <td>
                     <span
                       style={{
-                        display: 'inline-block',
-                        padding: '3px 8px',
-                        borderRadius: 6,
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                        background: '#f1f5f9',
-                        color: '#334155',
-                      }}
-                    >
-                      📍 {audit.area || 'General'}
-                    </span>
-                    {audit._searchMatchType === 'direct' && (
-                      <span
-                        style={{
-                          fontSize: '0.72rem',
-                          padding: '2px 6px',
-                          borderRadius: 4,
-                          background: '#dcfce7',
-                          color: '#15803d',
-                          fontWeight: 700,
-                        }}
-                      >
-                        🎯 Match
-                      </span>
-                    )}
-                    {audit._searchMatchType === 'nearby' && (
-                      <span
-                        style={{
-                          fontSize: '0.72rem',
-                          padding: '2px 6px',
-                          borderRadius: 4,
-                          background: '#ede9fe',
-                          color: '#6d28d9',
-                          fontWeight: 600,
-                        }}
-                      >
-                        📍 Nearby
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td style={{ color: '#475569', fontSize: '0.9rem' }}>
-                  {new Date(audit.createdAt).toLocaleString(undefined, {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  })}
-                </td>
-                <td>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      padding: '3px 8px',
-                      borderRadius: 6,
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      background: audit.stages?.length >= 3 ? '#dcfce7' : audit.stages?.length === 2 ? '#eff6ff' : '#fef3c7',
-                      color: audit.stages?.length >= 3 ? '#15803d' : audit.stages?.length === 2 ? '#1d4ed8' : '#b45309',
-                      border: audit.stages?.length >= 3 ? '1px solid #bbf7d0' : audit.stages?.length === 2 ? '1px solid #bfdbfe' : '1px solid #fde68a',
-                    }}
-                  >
-                    {audit.stages?.length >= 3
-                      ? '✅ 3/3 Stages'
-                      : audit.stages?.length === 2
-                      ? '📋 Stages 1 & 2'
-                      : audit.stages?.length === 1
-                      ? '📦 Stage 1 (Hardware)'
-                      : `${audit.stages?.length || 0} Stages`}
-                  </span>
-                </td>
-                <td>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      fontSize: '0.85rem',
-                      color: '#475569',
-                    }}
-                  >
-                    📸 {audit.photos?.length || 0} photo(s)
-                  </span>
-                </td>
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => openAuditDetail(audit._id)}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: '0.82rem',
-                        fontWeight: 500,
-                        borderRadius: 6,
-                        background: '#f8fafc',
+                        fontFamily: 'monospace',
+                        fontWeight: 700,
+                        fontSize: '0.95rem',
                         color: 'var(--color-primary)',
-                        border: '1px solid var(--color-border)',
-                        cursor: 'pointer',
+                        background: 'rgba(37, 99, 235, 0.08)',
+                        padding: '4px 8px',
+                        borderRadius: 6,
                       }}
                     >
-                      👁 View Details
-                    </button>
-                    {audit.stages && audit.stages.length < 3 && (
+                      {audit.atmId}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          background: '#f1f5f9',
+                          color: '#334155',
+                        }}
+                      >
+                        📍 {audit.area || 'General'}
+                      </span>
+                      {audit._searchMatchType === 'direct' && (
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            background: '#dcfce7',
+                            color: '#15803d',
+                            fontWeight: 700,
+                          }}
+                        >
+                          🎯 Match
+                        </span>
+                      )}
+                      {audit._searchMatchType === 'nearby' && (
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            background: '#ede9fe',
+                            color: '#6d28d9',
+                            fontWeight: 600,
+                          }}
+                        >
+                          📍 Nearby
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  {/* Stage 1 */}
+                  <td>
+                    {s1Stats.total > 0 ? (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: s1Stats.isComplete ? '#dcfce7' : s1Stats.answered > 0 ? '#eff6ff' : '#f1f5f9',
+                          color: s1Stats.isComplete ? '#15803d' : s1Stats.answered > 0 ? '#1d4ed8' : '#64748b',
+                          border: s1Stats.isComplete ? '1px solid #bbf7d0' : s1Stats.answered > 0 ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                        }}
+                      >
+                        {s1Stats.isComplete ? '✅' : '⏳'} {s1Stats.answered}/{s1Stats.total}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Pending</span>
+                    )}
+                  </td>
+                  {/* Stage 2 */}
+                  <td>
+                    {s2Stats.total > 0 ? (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: s2Stats.isComplete ? '#dcfce7' : s2Stats.answered > 0 ? '#eff6ff' : '#f1f5f9',
+                          color: s2Stats.isComplete ? '#15803d' : s2Stats.answered > 0 ? '#1d4ed8' : '#64748b',
+                          border: s2Stats.isComplete ? '1px solid #bbf7d0' : s2Stats.answered > 0 ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                        }}
+                      >
+                        {s2Stats.isComplete ? '✅' : '⏳'} {s2Stats.answered}/{s2Stats.total}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Pending</span>
+                    )}
+                  </td>
+                  {/* Stage 3 */}
+                  <td>
+                    {s3Stats.total > 0 ? (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: s3Stats.isComplete ? '#dcfce7' : s3Stats.answered > 0 ? '#eff6ff' : '#f1f5f9',
+                          color: s3Stats.isComplete ? '#15803d' : s3Stats.answered > 0 ? '#1d4ed8' : '#64748b',
+                          border: s3Stats.isComplete ? '1px solid #bbf7d0' : s3Stats.answered > 0 ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                        }}
+                      >
+                        {s3Stats.isComplete ? '✅' : '⏳'} {s3Stats.answered}/{s3Stats.total}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Pending</span>
+                    )}
+                  </td>
+                  {/* Complete Audit Status */}
+                  <td>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '4px 10px',
+                        borderRadius: 20,
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        background: isComplete ? '#dcfce7' : '#fef3c7',
+                        color: isComplete ? '#15803d' : '#b45309',
+                        border: isComplete ? '1px solid #bbf7d0' : '1px solid #fde68a',
+                      }}
+                    >
+                      {isComplete ? '🎉 Complete Audit' : '⏳ In Progress'}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontSize: '0.85rem',
+                        color: '#475569',
+                      }}
+                    >
+                      📸 {audit.photos?.length || 0}
+                    </span>
+                  </td>
+                  <td style={{ color: '#475569', fontSize: '0.85rem' }}>
+                    {new Date(audit.createdAt).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => openAuditDetail(audit._id)}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '0.82rem',
+                          fontWeight: 500,
+                          borderRadius: 6,
+                          background: '#f8fafc',
+                          color: 'var(--color-primary)',
+                          border: '1px solid var(--color-border)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        👁 View
+                      </button>
                       <button
                         onClick={() => navigate(`/audit/new?atmId=${audit.atmId}&continue=true`)}
                         style={{
@@ -462,15 +610,15 @@ export default function AuditorAudits() {
                           border: '1px solid #bfdbfe',
                           cursor: 'pointer',
                         }}
-                        title="Continue remaining stages for this ATM"
+                        title={isComplete ? "Edit or update this completed audit" : "Continue remaining stages"}
                       >
-                        ➕ Continue
+                        ✏️ {isComplete ? 'Edit' : 'Continue'}
                       </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -545,64 +693,312 @@ export default function AuditorAudits() {
           </div>
         </div>
 
-        {/* KPI Cards */}
-        <div className="kpi-grid">
+        {/* 5 Submodules KPI Cards */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
+          {/* All Audits */}
           <div
+            onClick={() => setActiveSubmodule('all')}
             style={{
-              padding: '16px 20px',
+              padding: '14px 18px',
               borderRadius: 12,
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.02))',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
+              background: activeSubmodule === 'all' ? '#0f172a' : '#f8fafc',
+              color: activeSubmodule === 'all' ? '#ffffff' : 'inherit',
+              border: activeSubmodule === 'all' ? '2px solid #0f172a' : '1px solid #e2e8f0',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
             }}
           >
-            <div style={{ fontSize: '0.85rem', color: '#047857', fontWeight: 600 }}>
-              ✅ Audits Submitted
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: activeSubmodule === 'all' ? '#94a3b8' : '#64748b' }}>
+              📊 All Audits
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: '#059669', marginTop: 4 }}>
-              {stats.totalSubmitted}
+            <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: 4 }}>
+              {submoduleCounts.all}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
-              Total inspections completed
+            <div style={{ fontSize: '0.72rem', color: activeSubmodule === 'all' ? '#cbd5e1' : '#94a3b8', marginTop: 2 }}>
+              Total inspections
             </div>
           </div>
 
+          {/* Stage 1 */}
           <div
+            onClick={() => setActiveSubmodule('stage1')}
             style={{
-              padding: '16px 20px',
+              padding: '14px 18px',
               borderRadius: 12,
-              background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.08), rgba(2, 132, 199, 0.02))',
-              border: '1px solid rgba(2, 132, 199, 0.2)',
+              background: activeSubmodule === 'stage1' ? '#2563eb' : '#eff6ff',
+              color: activeSubmodule === 'stage1' ? '#ffffff' : '#1e40af',
+              border: activeSubmodule === 'stage1' ? '2px solid #1d4ed8' : '1px solid #bfdbfe',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
             }}
           >
-            <div style={{ fontSize: '0.85rem', color: '#0369a1', fontWeight: 600 }}>
-              📸 Photos Uploaded
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: activeSubmodule === 'stage1' ? '#dbeafe' : '#1d4ed8' }}>
+              📦 Stage 1: Hardware
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: '#0284c7', marginTop: 4 }}>
-              {stats.totalPhotos}
+            <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: 4 }}>
+              {submoduleCounts.stage1}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
-              Across all inspections
+            <div style={{ fontSize: '0.72rem', color: activeSubmodule === 'stage1' ? '#dbeafe' : '#3b82f6', marginTop: 2 }}>
+              Hardware verified
             </div>
           </div>
 
+          {/* Stage 2 */}
           <div
+            onClick={() => setActiveSubmodule('stage2')}
             style={{
-              padding: '16px 20px',
+              padding: '14px 18px',
               borderRadius: 12,
-              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.02))',
-              border: '1px solid rgba(139, 92, 246, 0.2)',
+              background: activeSubmodule === 'stage2' ? '#0891b2' : '#ecfeff',
+              color: activeSubmodule === 'stage2' ? '#ffffff' : '#155e75',
+              border: activeSubmodule === 'stage2' ? '2px solid #0e7490' : '1px solid #a5f3fc',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
             }}
           >
-            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-              📍 Zones Covered
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: activeSubmodule === 'stage2' ? '#cffafe' : '#0891b2' }}>
+              🔄 Stage 2: Functional
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: '#7c3aed', marginTop: 4 }}>
-              {stats.uniqueZones}
+            <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: 4 }}>
+              {submoduleCounts.stage2}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
-              Unique areas audited
+            <div style={{ fontSize: '0.72rem', color: activeSubmodule === 'stage2' ? '#cffafe' : '#06b6d4', marginTop: 2 }}>
+              Quality tested
             </div>
           </div>
+
+          {/* Stage 3 */}
+          <div
+            onClick={() => setActiveSubmodule('stage3')}
+            style={{
+              padding: '14px 18px',
+              borderRadius: 12,
+              background: activeSubmodule === 'stage3' ? '#7c3aed' : '#f5f3ff',
+              color: activeSubmodule === 'stage3' ? '#ffffff' : '#5b21b6',
+              border: activeSubmodule === 'stage3' ? '2px solid #6d28d9' : '1px solid #ddd6fe',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: activeSubmodule === 'stage3' ? '#ede9fe' : '#7c3aed' }}>
+              ⚡ Stage 3: Security
+            </div>
+            <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: 4 }}>
+              {submoduleCounts.stage3}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: activeSubmodule === 'stage3' ? '#ede9fe' : '#8b5cf6', marginTop: 2 }}>
+              Network & cyber audit
+            </div>
+          </div>
+
+          {/* Complete Audit */}
+          <div
+            onClick={() => setActiveSubmodule('completed')}
+            style={{
+              padding: '14px 18px',
+              borderRadius: 12,
+              background: activeSubmodule === 'completed' ? '#16a34a' : '#f0fdf4',
+              color: activeSubmodule === 'completed' ? '#ffffff' : '#14532d',
+              border: activeSubmodule === 'completed' ? '2px solid #15803d' : '1px solid #bbf7d0',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: activeSubmodule === 'completed' ? '#dcfce7' : '#16a34a' }}>
+              🎉 Complete Audit
+            </div>
+            <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: 4 }}>
+              {submoduleCounts.completed}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: activeSubmodule === 'completed' ? '#dcfce7' : '#22c55e', marginTop: 2 }}>
+              All 3 stages 100% done
+            </div>
+          </div>
+        </div>
+
+        {/* 4 Submodules Tabs Bar */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            overflowX: 'auto',
+            paddingBottom: 6,
+            marginBottom: 20,
+            borderBottom: '2px solid #f1f5f9',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setActiveSubmodule('all')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              fontSize: '0.86rem',
+              fontWeight: activeSubmodule === 'all' ? 700 : 500,
+              background: activeSubmodule === 'all' ? '#1e293b' : '#f8fafc',
+              color: activeSubmodule === 'all' ? '#ffffff' : '#475569',
+              border: activeSubmodule === 'all' ? '1px solid #0f172a' : '1px solid #e2e8f0',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span>📊 All Audits</span>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                padding: '2px 7px',
+                borderRadius: 12,
+                background: activeSubmodule === 'all' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
+                color: activeSubmodule === 'all' ? '#ffffff' : '#334155',
+                fontWeight: 700,
+              }}
+            >
+              {submoduleCounts.all}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubmodule('stage1')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              fontSize: '0.86rem',
+              fontWeight: activeSubmodule === 'stage1' ? 700 : 500,
+              background: activeSubmodule === 'stage1' ? '#2563eb' : '#eff6ff',
+              color: activeSubmodule === 'stage1' ? '#ffffff' : '#1d4ed8',
+              border: activeSubmodule === 'stage1' ? '1px solid #1d4ed8' : '1px solid #bfdbfe',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span>📦 Stage 1: Hardware</span>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                padding: '2px 7px',
+                borderRadius: 12,
+                background: activeSubmodule === 'stage1' ? 'rgba(255,255,255,0.25)' : '#dbeafe',
+                color: activeSubmodule === 'stage1' ? '#ffffff' : '#1e40af',
+                fontWeight: 700,
+              }}
+            >
+              {submoduleCounts.stage1}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubmodule('stage2')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              fontSize: '0.86rem',
+              fontWeight: activeSubmodule === 'stage2' ? 700 : 500,
+              background: activeSubmodule === 'stage2' ? '#0891b2' : '#ecfeff',
+              color: activeSubmodule === 'stage2' ? '#ffffff' : '#0e7490',
+              border: activeSubmodule === 'stage2' ? '1px solid #0e7490' : '1px solid #a5f3fc',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span>🔄 Stage 2: Functional</span>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                padding: '2px 7px',
+                borderRadius: 12,
+                background: activeSubmodule === 'stage2' ? 'rgba(255,255,255,0.25)' : '#cffafe',
+                color: activeSubmodule === 'stage2' ? '#ffffff' : '#155e75',
+                fontWeight: 700,
+              }}
+            >
+              {submoduleCounts.stage2}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubmodule('stage3')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              fontSize: '0.86rem',
+              fontWeight: activeSubmodule === 'stage3' ? 700 : 500,
+              background: activeSubmodule === 'stage3' ? '#7c3aed' : '#f5f3ff',
+              color: activeSubmodule === 'stage3' ? '#ffffff' : '#6d28d9',
+              border: activeSubmodule === 'stage3' ? '1px solid #6d28d9' : '1px solid #ddd6fe',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span>⚡ Stage 3: Network & Security</span>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                padding: '2px 7px',
+                borderRadius: 12,
+                background: activeSubmodule === 'stage3' ? 'rgba(255,255,255,0.25)' : '#ede9fe',
+                color: activeSubmodule === 'stage3' ? '#ffffff' : '#5b21b6',
+                fontWeight: 700,
+              }}
+            >
+              {submoduleCounts.stage3}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubmodule('completed')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              fontSize: '0.86rem',
+              fontWeight: activeSubmodule === 'completed' ? 700 : 500,
+              background: activeSubmodule === 'completed' ? '#16a34a' : '#f0fdf4',
+              color: activeSubmodule === 'completed' ? '#ffffff' : '#15803d',
+              border: activeSubmodule === 'completed' ? '1px solid #15803d' : '1px solid #bbf7d0',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span>🎉 Complete Audit (All 3 Stages)</span>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                padding: '2px 7px',
+                borderRadius: 12,
+                background: activeSubmodule === 'completed' ? 'rgba(255,255,255,0.25)' : '#dcfce7',
+                color: activeSubmodule === 'completed' ? '#ffffff' : '#166534',
+                fontWeight: 700,
+              }}
+            >
+              {submoduleCounts.completed}
+            </span>
+          </button>
         </div>
 
         {/* Search, Area Filter & View Mode Bar */}
@@ -1001,11 +1397,54 @@ export default function AuditorAudits() {
           </div>
         )}
 
-        {!loading && audits.length > 0 && filteredAudits.length === 0 && (
-          <p className="empty-state">No audits match your search query "{search}".</p>
+        {!loading && audits.length > 0 && displayedAudits.length === 0 && (
+          <div
+            style={{
+              padding: '36px 20px',
+              textAlign: 'center',
+              background: '#f8fafc',
+              borderRadius: 12,
+              border: '1px dashed #cbd5e1',
+              margin: '20px 0',
+            }}
+          >
+            <p style={{ color: '#64748b', fontSize: '0.95rem', margin: '0 0 12px' }}>
+              {search
+                ? `No audits match your search "${search}" in the selected submodule filter.`
+                : activeSubmodule !== 'all'
+                ? `No audits currently in ${
+                    activeSubmodule === 'stage1'
+                      ? 'Stage 1 (Hardware Verification)'
+                      : activeSubmodule === 'stage2'
+                      ? 'Stage 2 (Functional & Quality)'
+                      : activeSubmodule === 'stage3'
+                      ? 'Stage 3 (Network & Security)'
+                      : 'Complete Audit (All 3 Stages)'
+                  }.`
+                : 'No audits match the selected filter.'}
+            </p>
+            {activeSubmodule !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setActiveSubmodule('all')}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: 6,
+                  fontSize: '0.84rem',
+                  fontWeight: 600,
+                  background: '#1e293b',
+                  color: '#ffffff',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                View All Audits ({audits.length})
+              </button>
+            )}
+          </div>
         )}
 
-        {!loading && filteredAudits.length > 0 && (
+        {!loading && displayedAudits.length > 0 && (
           viewMode === 'area' ? (
             /* Area-Wise Grouped Audits View */
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1052,7 +1491,7 @@ export default function AuditorAudits() {
             </div>
           ) : (
             /* Flat Table View */
-            renderAuditsTable(filteredAudits)
+            renderAuditsTable(displayedAudits)
           )
         )}
       </div>
@@ -1319,7 +1758,27 @@ export default function AuditorAudits() {
                   </div>
                 )}
 
-                <div style={{ marginTop: 24, textAlign: 'right' }}>
+                <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                  <button
+                    onClick={() => {
+                      closeAuditDetail();
+                      navigate(`/audit/new?atmId=${detailAudit.atmId}&continue=true`);
+                    }}
+                    style={{
+                      padding: '8px 18px',
+                      borderRadius: 8,
+                      background: '#eff6ff',
+                      color: '#1d4ed8',
+                      border: '1px solid #bfdbfe',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <span>✏️</span> Edit / Update This Audit
+                  </button>
                   <button
                     onClick={closeAuditDetail}
                     style={{

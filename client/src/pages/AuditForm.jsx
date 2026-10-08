@@ -4,6 +4,7 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Topbar from '../components/Topbar';
 import AuditorNav from '../components/AuditorNav';
+import AdminNav from '../components/AdminNav';
 import CameraCapture from '../components/CameraCapture';
 import PhotoLightbox from '../components/PhotoLightbox';
 import {
@@ -548,12 +549,12 @@ export default function AuditForm() {
     const targetStage = stages[targetIndex];
     if (!targetStage) return;
 
-    // Validate the target stage
-    const validationError = validateStageByIndex(targetIndex);
-    if (validationError) {
-      setStageIndex(targetIndex);
-      setError(validationError);
-      return;
+    // Check if any answered 'no' is missing a reason
+    for (const q of targetStage.questions || []) {
+      if (q.answer === 'no' && !q.reason?.trim()) {
+        setError(`Please provide a reason for answered "No": "${q.questionText}"`);
+        return;
+      }
     }
 
     // ATM photos check
@@ -566,14 +567,13 @@ export default function AuditForm() {
     setSavingStageIndex(targetIndex);
 
     try {
-      // Include any stage that is complete (or at minimum the target stage)
-      const stagesToSubmit = stages.filter((st, idx) => idx === targetIndex || isStageComplete(st));
-
+      // Send all stages so any answered questions across stages are preserved
       const payload = {
         atmId: selectedAtm.atmId,
         area: selectedAtm.area?.name || selectedAtm.zone || 'General',
         photos,
-        stages: stagesToSubmit,
+        stages,
+        isFinalComplete: false,
       };
       if (existingAuditId) {
         payload.auditId = existingAuditId;
@@ -591,18 +591,18 @@ export default function AuditForm() {
       const newlySaved = new Set((updatedAudit.stages || []).map((s) => s.stageId || s.stageName));
       setSavedStageIds(newlySaved);
 
-      // Check if all 3 stages are now submitted in DB
-      const isAllDone = updatedAudit.stages && updatedAudit.stages.length >= Math.min(3, stages.length);
+      const answeredInTarget = (targetStage.questions || []).filter(
+        (q) => q.answer === 'yes' || q.answer === 'no'
+      ).length;
 
-      if (finish || isAllDone) {
+      if (finish) {
         if (user?.id) {
           await clearDraftFromStorage(user.id, selectedAtm?.atmId);
         }
-        setSubmittedStagesCount(updatedAudit.stages?.length || 1);
-        setSuccess(true);
+        navigate('/auditor/audits');
       } else {
         setStageSuccessMessage(
-          `✅ Stage ${targetIndex + 1} (${targetStage.stageName}) saved! (${updatedAudit.stages?.length || 1}/${stages.length} stages saved)`
+          `✅ Stage ${targetIndex + 1} (${targetStage.stageName}) saved to database! (${answeredInTarget}/${targetStage.questions.length} questions answered)`
         );
 
         if (advance && targetIndex < stages.length - 1) {
@@ -622,14 +622,32 @@ export default function AuditForm() {
     setError('');
     setStageSuccessMessage('');
 
-    // Validate all stages
-    for (let i = 0; i < stages.length; i++) {
-      const stageError = validateStageByIndex(i);
-      if (stageError) {
-        setStageIndex(i);
-        setError(`Cannot submit full audit: ${stageError}`);
-        return;
+    // Check all 3 stages for any unanswered question
+    const missing = [];
+    stages.forEach((st, sIdx) => {
+      const unanswered = (st.questions || []).filter(
+        (q) => !q.answer || (q.answer === 'no' && !q.reason?.trim())
+      );
+      if (unanswered.length > 0) {
+        missing.push({
+          stageIndex: sIdx,
+          stageName: st.stageName,
+          count: unanswered.length,
+          questions: unanswered.map((u) => u.questionText),
+        });
       }
+    });
+
+    if (missing.length > 0) {
+      const summaryMsg = missing
+        .map((m) => `Stage ${m.stageIndex + 1} (${m.stageName}): ${m.count} question(s) incomplete`)
+        .join('; ');
+      setError(
+        `Cannot complete audit yet. All 3 stages must be 100% complete before Final Submission:\n${summaryMsg}`
+      );
+      // Auto-jump to the first incomplete stage
+      setStageIndex(missing[0].stageIndex);
+      return;
     }
 
     if (!photos || photos.length === 0) {
@@ -644,6 +662,7 @@ export default function AuditForm() {
         area: selectedAtm.area?.name || selectedAtm.zone || 'General',
         photos,
         stages,
+        isFinalComplete: true,
       };
       if (existingAuditId) {
         payload.auditId = existingAuditId;
@@ -657,7 +676,7 @@ export default function AuditForm() {
       setSuccess(true);
     } catch (err) {
       console.error('Submit all stages error:', err);
-      setError(err.response?.data?.message || 'Failed to submit full audit');
+      setError(err.response?.data?.message || 'Failed to submit complete audit');
     } finally {
       setSubmitting(false);
     }
@@ -774,17 +793,17 @@ export default function AuditForm() {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <button
-              onClick={() => navigate('/auditor/audits')}
+              onClick={() => navigate(user?.role === 'admin' ? '/admin' : '/auditor/audits')}
               style={{
                 padding: '10px 18px',
                 fontWeight: 600,
                 borderRadius: 8,
               }}
             >
-              📋 View in Submitted Audits &rarr;
+              📋 View in {user?.role === 'admin' ? 'Admin Dashboard' : 'Submitted Audits'} &rarr;
             </button>
             <button
-              onClick={() => navigate('/auditor')}
+              onClick={() => navigate(user?.role === 'admin' ? '/admin' : '/auditor')}
               style={{
                 padding: '10px 18px',
                 fontWeight: 600,
@@ -794,7 +813,7 @@ export default function AuditForm() {
                 border: '1px solid var(--color-border)',
               }}
             >
-              📍 Back to Assigned ATMs
+              📍 Back to {user?.role === 'admin' ? 'Admin Portal' : 'Assigned ATMs'}
             </button>
             <button
               onClick={startNewAudit}
@@ -821,7 +840,7 @@ export default function AuditForm() {
         <Topbar>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span className="user-chip">
-              <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Auditor</span>
+              <span className="user-chip-name">{user?.name}</span> <span className="role-badge">{user?.role === 'admin' ? 'Admin' : 'Auditor'}</span>
             </span>
             {lastSavedAt && (
               <span
@@ -848,7 +867,7 @@ export default function AuditForm() {
           </button>
         </Topbar>
 
-        <AuditorNav />
+        {user?.role === 'admin' ? <AdminNav /> : <AuditorNav />}
 
         <div className="card wide">
           {draftRestored && (
@@ -1164,7 +1183,7 @@ export default function AuditForm() {
       <Topbar>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span className="user-chip">
-            <span className="user-chip-name">{user?.name}</span> <span className="role-badge">Auditor</span>
+            <span className="user-chip-name">{user?.name}</span> <span className="role-badge">{user?.role === 'admin' ? 'Admin' : 'Auditor'}</span>
           </span>
           {lastSavedAt && (
             <span

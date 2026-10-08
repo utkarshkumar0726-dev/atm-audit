@@ -49,7 +49,7 @@ export default function App() {
           <Route
             path="/audit/new"
             element={
-              <ProtectedRoute role="auditor">
+              <ProtectedRoute role={['auditor', 'admin']}>
                 <AuditForm />
               </ProtectedRoute>
             }

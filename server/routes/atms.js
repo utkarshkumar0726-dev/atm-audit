@@ -109,22 +109,52 @@ router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
   }
 });
 
-// GET /api/atms/mine - auditor views only the ATMs assigned to them
-router.get('/mine', requireAuth, requireRole('auditor'), async (req, res) => {
+// GET /api/atms/mine - auditor views assigned ATMs; admin views all ATMs with audit status
+router.get('/mine', requireAuth, requireRole('auditor', 'admin'), async (req, res) => {
   try {
+    if (req.user.role === 'admin') {
+      const [allAtms, audits] = await Promise.all([
+        Atm.find({}).populate('area', 'id name'),
+        Audit.find({}).select('atmId createdAt isCompleted stages'),
+      ]);
+
+      const auditedMap = new Map();
+      audits.forEach((a) => {
+        if (a.atmId) {
+          auditedMap.set(String(a.atmId).trim().toLowerCase(), a);
+        }
+      });
+
+      const atms = allAtms.map((atm) => {
+        const atmObj = atm.toObject ? atm.toObject() : { ...atm };
+        const key = String(atm.atmId || '').trim().toLowerCase();
+        const aRecord = auditedMap.get(key);
+        atmObj.isAudited = Boolean(aRecord?.isCompleted);
+        atmObj.auditInProgress = Boolean(aRecord && !aRecord.isCompleted && aRecord.stages?.length > 0);
+        atmObj.lastAuditedAt = aRecord?.createdAt || null;
+        return atmObj;
+      });
+
+      if (req.query.pending === 'true') {
+        return res.json(atms.filter((a) => !a.isAudited));
+      }
+
+      return res.json(atms);
+    }
+
     const [assignments, audits] = await Promise.all([
       Assignment.find({ auditor: req.user.id })
         .populate({
           path: 'atm',
           populate: { path: 'area', select: 'id name' },
         }),
-      Audit.find({ auditor: req.user.id }).select('atmId createdAt'),
+      Audit.find({ auditor: req.user.id }).select('atmId createdAt isCompleted stages'),
     ]);
 
     const auditedMap = new Map();
     audits.forEach((a) => {
       if (a.atmId) {
-        auditedMap.set(String(a.atmId).trim().toLowerCase(), a.createdAt);
+        auditedMap.set(String(a.atmId).trim().toLowerCase(), a);
       }
     });
 
@@ -134,8 +164,10 @@ router.get('/mine', requireAuth, requireRole('auditor'), async (req, res) => {
       .map((atm) => {
         const atmObj = atm.toObject ? atm.toObject() : { ...atm };
         const key = String(atm.atmId || '').trim().toLowerCase();
-        atmObj.isAudited = auditedMap.has(key);
-        atmObj.lastAuditedAt = auditedMap.get(key) || null;
+        const aRecord = auditedMap.get(key);
+        atmObj.isAudited = Boolean(aRecord?.isCompleted);
+        atmObj.auditInProgress = Boolean(aRecord && !aRecord.isCompleted && aRecord.stages?.length > 0);
+        atmObj.lastAuditedAt = aRecord?.createdAt || null;
         return atmObj;
       });
 
