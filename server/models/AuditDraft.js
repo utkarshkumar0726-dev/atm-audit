@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const auditDraftSchema = new mongoose.Schema(
   {
-    auditor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    _id: { type: mongoose.Schema.Types.Mixed, default: () => new mongoose.Types.ObjectId().toString() },
+    auditor: { type: mongoose.Schema.Types.Mixed, ref: 'User', required: true, index: true },
     atmId: { type: String, default: '', index: true },
     selectedAtm: { type: mongoose.Schema.Types.Mixed, default: null },
     photos: [{ type: String }],

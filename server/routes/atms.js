@@ -142,13 +142,20 @@ router.get('/mine', requireAuth, requireRole('auditor', 'admin'), async (req, re
       return res.json(atms);
     }
 
+    const mongoose = require('mongoose');
+    const auditorId = req.user.id ? req.user.id.toString() : '';
+    const auditorQueries = [
+      auditorId,
+      ...(mongoose.Types.ObjectId.isValid(auditorId) ? [new mongoose.Types.ObjectId(auditorId)] : []),
+    ];
+
     const [assignments, audits] = await Promise.all([
-      Assignment.find({ auditor: req.user.id })
+      Assignment.find({ auditor: { $in: auditorQueries } })
         .populate({
           path: 'atm',
           populate: { path: 'area', select: 'id name' },
         }),
-      Audit.find({ auditor: req.user.id }).select('atmId createdAt isCompleted stages'),
+      Audit.find({ auditor: { $in: auditorQueries } }).select('atmId createdAt isCompleted stages'),
     ]);
 
     const auditedMap = new Map();
@@ -158,18 +165,22 @@ router.get('/mine', requireAuth, requireRole('auditor', 'admin'), async (req, re
       }
     });
 
-    const atms = assignments
-      .map((a) => a.atm)
-      .filter(Boolean)
-      .map((atm) => {
-        const atmObj = atm.toObject ? atm.toObject() : { ...atm };
-        const key = String(atm.atmId || '').trim().toLowerCase();
-        const aRecord = auditedMap.get(key);
-        atmObj.isAudited = Boolean(aRecord?.isCompleted);
-        atmObj.auditInProgress = Boolean(aRecord && !aRecord.isCompleted && aRecord.stages?.length > 0);
-        atmObj.lastAuditedAt = aRecord?.createdAt || null;
-        return atmObj;
-      });
+    const uniqueAtmMap = new Map();
+    assignments.forEach((a) => {
+      if (a.atm && a.atm.atmId) {
+        const key = String(a.atm.atmId).trim().toLowerCase();
+        if (!uniqueAtmMap.has(key)) {
+          const atmObj = a.atm.toObject ? a.atm.toObject() : { ...a.atm };
+          const aRecord = auditedMap.get(key);
+          atmObj.isAudited = Boolean(aRecord?.isCompleted);
+          atmObj.auditInProgress = Boolean(aRecord && !aRecord.isCompleted && aRecord.stages?.length > 0);
+          atmObj.lastAuditedAt = aRecord?.createdAt || null;
+          uniqueAtmMap.set(key, atmObj);
+        }
+      }
+    });
+
+    const atms = Array.from(uniqueAtmMap.values());
 
     if (req.query.pending === 'true') {
       return res.json(atms.filter((a) => !a.isAudited));

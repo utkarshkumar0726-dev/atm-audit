@@ -2,9 +2,10 @@ const mongoose = require('mongoose');
 
 const atmSchema = new mongoose.Schema(
   {
+    _id: { type: mongoose.Schema.Types.Mixed, default: () => new mongoose.Types.ObjectId().toString() },
     slNo: { type: Number, default: 0 },
     atmId: { type: String, required: true, unique: true, trim: true },
-    area: { type: mongoose.Schema.Types.ObjectId, ref: 'Area', required: true },
+    area: { type: mongoose.Schema.Types.Mixed, ref: 'Area', required: true },
     vendor: { type: String, default: '', trim: true },
     bic: { type: String, default: '', trim: true },
     branchName: { type: String, default: '', trim: true },

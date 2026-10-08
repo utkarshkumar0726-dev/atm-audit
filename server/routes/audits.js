@@ -311,13 +311,20 @@ router.get('/draft', requireAuth, requireRole('auditor'), async (req, res) => {
     const { atmId } = req.query;
     let draft = null;
 
+    const mongoose = require('mongoose');
+    const auditorId = req.user.id ? req.user.id.toString() : '';
+    const auditorQueries = [
+      auditorId,
+      ...(mongoose.Types.ObjectId.isValid(auditorId) ? [new mongoose.Types.ObjectId(auditorId)] : []),
+    ];
+
     if (atmId && atmId.trim()) {
       draft = await AuditDraft.findOne({
-        auditor: req.user.id,
+        auditor: { $in: auditorQueries },
         atmId: { $regex: new RegExp(`^${atmId.trim()}$`, 'i') },
       }).sort({ updatedAt: -1 });
     } else {
-      draft = await AuditDraft.findOne({ auditor: req.user.id }).sort({ updatedAt: -1 });
+      draft = await AuditDraft.findOne({ auditor: { $in: auditorQueries } }).sort({ updatedAt: -1 });
     }
 
     res.json({ draft });
@@ -431,7 +438,13 @@ router.get('/atm/:atmId', requireAuth, requireRole('auditor', 'admin'), async (r
 // GET /api/audits/mine - auditor views their own submitted audits
 router.get('/mine', requireAuth, requireRole('auditor'), async (req, res) => {
   try {
-    const rawAudits = await Audit.find({ auditor: req.user.id }).sort({ createdAt: -1 });
+    const mongoose = require('mongoose');
+    const auditorId = req.user.id ? req.user.id.toString() : '';
+    const auditorQueries = [
+      auditorId,
+      ...(mongoose.Types.ObjectId.isValid(auditorId) ? [new mongoose.Types.ObjectId(auditorId)] : []),
+    ];
+    const rawAudits = await Audit.find({ auditor: { $in: auditorQueries } }).sort({ createdAt: -1 });
     
     // Group and consolidate any duplicate records for the same ATM
     const atmMap = new Map();

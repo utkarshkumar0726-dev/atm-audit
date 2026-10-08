@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const loginLogSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    _id: { type: mongoose.Schema.Types.Mixed, default: () => new mongoose.Types.ObjectId().toString() },
+    user: { type: mongoose.Schema.Types.Mixed, ref: 'User' },
     username: { type: String, required: true },
     name: { type: String, required: true },
     role: { type: String, enum: ['admin', 'auditor'], required: true },

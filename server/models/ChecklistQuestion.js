@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const checklistQuestionSchema = new mongoose.Schema(
   {
-    stage: { type: mongoose.Schema.Types.ObjectId, ref: 'Stage', required: true },
+    _id: { type: mongoose.Schema.Types.Mixed, default: () => new mongoose.Types.ObjectId().toString() },
+    stage: { type: mongoose.Schema.Types.Mixed, ref: 'Stage', required: true },
     text: { type: String, required: true, trim: true },
     order: { type: Number, default: 0 },
   },

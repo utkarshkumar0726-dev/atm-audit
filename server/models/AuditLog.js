@@ -2,8 +2,9 @@ const mongoose = require('mongoose');
 
 const auditLogSchema = new mongoose.Schema(
   {
-    audit: { type: mongoose.Schema.Types.ObjectId, ref: 'Audit' },
-    auditor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    _id: { type: mongoose.Schema.Types.Mixed, default: () => new mongoose.Types.ObjectId().toString() },
+    audit: { type: mongoose.Schema.Types.Mixed, ref: 'Audit' },
+    auditor: { type: mongoose.Schema.Types.Mixed, ref: 'User', required: true },
     auditorName: { type: String, required: true },
     auditorUsername: { type: String, required: true },
     atmId: { type: String, required: true },
