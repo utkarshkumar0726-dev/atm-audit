@@ -1654,4 +1654,49 @@ select:focus {
   }
 }
 
+/* Print Styles for ATM Audit Reports */
+@media print {
+  .topbar,
+  .admin-nav,
+  .auditor-nav,
+  .no-print,
+  .modal-backdrop,
+  button,
+  a.link {
+    display: none !important;
+  }
+
+  body,
+  .page,
+  .card {
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .stage-block {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    border-bottom: 1px solid #cbd5e1;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+  }
+
+  .question.readonly {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .photo-grid-view img {
+    max-height: 120px !important;
+    object-fit: cover !important;
+  }
+}
+
+
 

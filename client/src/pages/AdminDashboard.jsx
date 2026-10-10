@@ -4,6 +4,7 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Topbar from '../components/Topbar';
 import AdminNav from '../components/AdminNav';
+import { downloadAuditsSummaryCSV, downloadSingleAuditCSV, printAuditReport } from '../utils/auditExport';
 
 function getStageStats(stage) {
   if (!stage || !Array.isArray(stage.questions)) return { answered: 0, total: 0, isComplete: false };
@@ -444,7 +445,7 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* Search Input Bar */}
+        {/* Search Input Bar & Export Button */}
         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <input
             type="text"
@@ -453,7 +454,7 @@ export default function AdminDashboard() {
             onChange={(e) => setSearch(e.target.value)}
             style={{
               width: '100%',
-              maxWidth: 480,
+              maxWidth: 420,
               padding: '10px 14px',
               borderRadius: 8,
               border: '1px solid var(--color-border)',
@@ -461,9 +462,32 @@ export default function AdminDashboard() {
             }}
           />
 
-          <span style={{ fontSize: '0.86rem', color: '#64748b', fontWeight: 600 }}>
-            Showing <strong>{displayedAudits.length}</strong> {activeSubmodule === 'all' ? 'total' : activeSubmodule} audits
-          </span>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => downloadAuditsSummaryCSV(displayedAudits, `Audits_${activeSubmodule}`)}
+              disabled={displayedAudits.length === 0}
+              title="Download visible audits summary as CSV spreadsheet"
+              style={{
+                padding: '9px 16px',
+                borderRadius: 8,
+                background: '#f0fdf4',
+                color: '#15803d',
+                border: '1px solid #bbf7d0',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: displayedAudits.length === 0 ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              📥 Export {activeSubmodule === 'all' ? 'All' : activeSubmodule === 'completed' ? 'Complete' : activeSubmodule} CSV
+            </button>
+            <span style={{ fontSize: '0.86rem', color: '#64748b', fontWeight: 600 }}>
+              Showing <strong>{displayedAudits.length}</strong> audits
+            </span>
+          </div>
         </div>
 
         {loading && <p>Loading audits...</p>}
@@ -643,10 +667,50 @@ export default function AdminDashboard() {
 
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            onClick={() => printAuditReport(audit)}
+                            title="Download or Print PDF Inspection Report"
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '0.82rem',
+                              fontWeight: 600,
+                              borderRadius: 6,
+                              background: '#1e3a8a',
+                              color: '#ffffff',
+                              border: 'none',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            📄 PDF
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => downloadSingleAuditCSV(audit)}
+                            title="Download Checklist as CSV"
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '0.82rem',
+                              fontWeight: 600,
+                              borderRadius: 6,
+                              background: '#f0fdf4',
+                              color: '#15803d',
+                              border: '1px solid #bbf7d0',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            📊 CSV
+                          </button>
                           <Link
                             to={`/admin/audits/${audit._id}`}
                             style={{
-                              padding: '6px 12px',
+                              padding: '6px 10px',
                               fontSize: '0.82rem',
                               fontWeight: 600,
                               borderRadius: 6,

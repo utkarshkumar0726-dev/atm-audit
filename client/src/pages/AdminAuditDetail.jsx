@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import Topbar from '../components/Topbar';
 import PhotoLightbox from '../components/PhotoLightbox';
+import { printAuditReport, downloadSingleAuditCSV } from '../utils/auditExport';
 
 export default function AdminAuditDetail() {
   const { id } = useParams();
@@ -71,6 +72,47 @@ export default function AdminAuditDetail() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => printAuditReport(audit)}
+              title="Download or Print PDF Inspection Report"
+              style={{
+                padding: '8px 16px',
+                borderRadius: 8,
+                background: '#1e3a8a',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 2px 4px rgba(30, 58, 138, 0.2)',
+              }}
+            >
+              📄 Download PDF Report
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadSingleAuditCSV(audit)}
+              title="Export complete checklist to CSV spreadsheet"
+              style={{
+                padding: '8px 16px',
+                borderRadius: 8,
+                background: '#f0fdf4',
+                color: '#15803d',
+                border: '1px solid #bbf7d0',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              📊 Download CSV
+            </button>
             <Link
               to={`/audit/new?atmId=${audit.atmId}`}
               style={{
@@ -87,7 +129,7 @@ export default function AdminAuditDetail() {
                 gap: 6,
               }}
             >
-              ✏️ Edit / Update Audit
+              ✏️ Edit / Update
             </Link>
             <button
               type="button"
@@ -106,7 +148,7 @@ export default function AdminAuditDetail() {
                 gap: 6,
               }}
             >
-              🗑️ Delete Audit
+              🗑️ Delete
             </button>
           </div>
         </div>

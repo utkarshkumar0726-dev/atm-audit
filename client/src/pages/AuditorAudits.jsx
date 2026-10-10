@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import Topbar from '../components/Topbar';
 import AuditorNav from '../components/AuditorNav';
 import PhotoLightbox from '../components/PhotoLightbox';
+import { printAuditReport, downloadSingleAuditCSV, downloadAuditsSummaryCSV } from '../utils/auditExport';
 
 // Normalization function to handle spelling variants common in Delhi / Indian addresses
 function normalizeLocalityQuery(str) {
@@ -1027,7 +1028,28 @@ export default function AuditorAudits() {
             }}
           />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => downloadAuditsSummaryCSV(displayedAudits, `My_Audits_${activeSubmodule}`)}
+              disabled={displayedAudits.length === 0}
+              title="Download your audits summary as CSV spreadsheet"
+              style={{
+                padding: '8px 14px',
+                borderRadius: 8,
+                background: '#f0fdf4',
+                color: '#15803d',
+                border: '1px solid #bbf7d0',
+                fontWeight: 600,
+                fontSize: '0.84rem',
+                cursor: displayedAudits.length === 0 ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              📥 Export Audits CSV
+            </button>
             {uniqueZones.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>📍 Area / Zone:</span>
@@ -1545,24 +1567,70 @@ export default function AuditorAudits() {
                   </div>
                 )}
               </div>
-              <button
-                onClick={closeAuditDetail}
-                style={{
-                  background: '#f1f5f9',
-                  border: 'none',
-                  fontSize: '1.25rem',
-                  borderRadius: '50%',
-                  width: 36,
-                  height: 36,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#64748b',
-                }}
-              >
-                ✕
-              </button>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {detailAudit && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => printAuditReport(detailAudit)}
+                      title="Download or Print PDF Inspection Report"
+                      style={{
+                        padding: '7px 12px',
+                        borderRadius: 6,
+                        background: '#1e3a8a',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontWeight: 600,
+                        fontSize: '0.82rem',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                      }}
+                    >
+                      📄 PDF Report
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadSingleAuditCSV(detailAudit)}
+                      title="Download Checklist as CSV Spreadsheet"
+                      style={{
+                        padding: '7px 12px',
+                        borderRadius: 6,
+                        background: '#f0fdf4',
+                        color: '#15803d',
+                        border: '1px solid #bbf7d0',
+                        fontWeight: 600,
+                        fontSize: '0.82rem',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                      }}
+                    >
+                      📊 CSV
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={closeAuditDetail}
+                  style={{
+                    background: '#f1f5f9',
+                    border: 'none',
+                    fontSize: '1.25rem',
+                    borderRadius: '50%',
+                    width: 36,
+                    height: 36,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#64748b',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {loadingDetail && <p style={{ padding: '20px 0', textAlign: 'center' }}>Loading audit details...</p>}
