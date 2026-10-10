@@ -1,5 +1,5 @@
 const express = require('express');
-const { Audit, User, AuditLog, AuditDraft } = require('../models');
+const { Audit, User, AuditLog, AuditDraft, Atm } = require('../models');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { parseUserAgent, getClientIp } = require('../utils/agentParser');
 
@@ -428,7 +428,14 @@ router.get('/atm/:atmId', requireAuth, requireRole('auditor', 'admin'), async (r
       await primaryAudit.save();
     }
 
-    res.json(primaryAudit);
+    const atm = await Atm.findOne({
+      atmId: { $regex: new RegExp(`^${primaryAudit.atmId.trim()}$`, 'i') },
+    }).populate('area', 'id name');
+
+    const auditObj = primaryAudit.toObject ? primaryAudit.toObject() : JSON.parse(JSON.stringify(primaryAudit));
+    auditObj.atm = atm || null;
+
+    res.json(auditObj);
   } catch (err) {
     console.error('Fetch ATM audit error:', err);
     res.status(500).json({ message: 'Server error fetching ATM audit' });
@@ -497,7 +504,14 @@ router.get('/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ message: 'Forbidden: You can only view audits you conducted' });
     }
 
-    res.json(audit);
+    const atm = await Atm.findOne({
+      atmId: { $regex: new RegExp(`^${audit.atmId.trim()}$`, 'i') },
+    }).populate('area', 'id name');
+
+    const auditObj = audit.toObject ? audit.toObject() : JSON.parse(JSON.stringify(audit));
+    auditObj.atm = atm || null;
+
+    res.json(auditObj);
   } catch (err) {
     console.error('Fetch audit detail error:', err);
     res.status(500).json({ message: 'Server error fetching audit' });

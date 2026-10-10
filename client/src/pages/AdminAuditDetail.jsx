@@ -153,6 +153,7 @@ export default function AdminAuditDetail() {
           </div>
         </div>
 
+        {/* ATM Master & Inspection Metadata */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16, background: '#f8fafc', padding: 16, borderRadius: 10, border: '1px solid #e2e8f0' }}>
           <div>
             <span style={{ fontSize: '0.8rem', color: '#64748b' }}>ATM ID:</span>
@@ -161,13 +162,23 @@ export default function AdminAuditDetail() {
             </div>
           </div>
           <div>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Branch / Location:</span>
+            <div style={{ fontWeight: 600 }}>{audit.atm?.branchName || audit.atm?.location || 'Not Specified'}</div>
+          </div>
+          <div>
             <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Area / Zone:</span>
-            <div style={{ fontWeight: 600 }}>{audit.area}</div>
+            <div style={{ fontWeight: 600 }}>{audit.area || audit.atm?.area?.name || 'General'}</div>
           </div>
           <div>
             <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Auditor:</span>
             <div style={{ fontWeight: 600 }}>{audit.auditor?.name || 'Unknown'} (@{audit.auditor?.username})</div>
           </div>
+          {audit.atm?.address && (
+            <div style={{ gridColumn: 'span 2' }}>
+              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Site Address:</span>
+              <div style={{ fontSize: '0.9rem', color: '#334155' }}>{audit.atm.address}</div>
+            </div>
+          )}
           <div>
             <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Status:</span>
             <div>
@@ -189,9 +200,34 @@ export default function AdminAuditDetail() {
           </div>
         </div>
 
+        {/* 1. Official ATM Installation / Archive Photos */}
+        {Array.from(new Set([...(audit.atm?.links || []), audit.atm?.link].filter(Boolean))).length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <h3 style={{ fontSize: '1rem', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>🏧 Official ATM Site / Installation Photos</span>
+              <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 'normal' }}>
+                ({Array.from(new Set([...(audit.atm?.links || []), audit.atm?.link].filter(Boolean))).length} photos)
+              </span>
+            </h3>
+            <div className="photo-grid photo-grid-view">
+              {Array.from(new Set([...(audit.atm?.links || []), audit.atm?.link].filter(Boolean))).map((url, i) => (
+                <div className="photo-grid-item" key={i}>
+                  <img src={url} alt={`ATM Master Photo ${i + 1}`} onClick={() => setLightboxPhoto(url)} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 2. Auditor On-Site Inspection Overview Photos */}
         {audit.photos?.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: '1rem', margin: '0 0 10px' }}>ATM Overview Photos ({audit.photos.length})</h3>
+            <h3 style={{ fontSize: '1rem', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>📷 Auditor On-Site Inspection Photos</span>
+              <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 'normal' }}>
+                ({audit.photos.length} photos)
+              </span>
+            </h3>
             <div className="photo-grid photo-grid-view">
               {audit.photos.map((p, i) => (
                 <div className="photo-grid-item" key={i}>

@@ -62,6 +62,33 @@ export default function AdminDashboard() {
   const [auditToDelete, setAuditToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [feedback, setFeedback] = useState(null); // { type: 'success' | 'error', message: string }
+  const [downloadingId, setDownloadingId] = useState(null);
+
+  async function handlePrintRow(auditItem) {
+    setDownloadingId(auditItem._id);
+    try {
+      const res = await api.get(`/audits/${auditItem._id}`);
+      printAuditReport(res.data);
+    } catch (err) {
+      console.error('Failed to load full audit for print:', err);
+      printAuditReport(auditItem);
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  async function handleCsvRow(auditItem) {
+    setDownloadingId(auditItem._id);
+    try {
+      const res = await api.get(`/audits/${auditItem._id}`);
+      downloadSingleAuditCSV(res.data);
+    } catch (err) {
+      console.error('Failed to load full audit for csv:', err);
+      downloadSingleAuditCSV(auditItem);
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   useEffect(() => {
     api
@@ -669,7 +696,8 @@ export default function AdminDashboard() {
                         <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
                           <button
                             type="button"
-                            onClick={() => printAuditReport(audit)}
+                            onClick={() => handlePrintRow(audit)}
+                            disabled={downloadingId === audit._id}
                             title="Download or Print PDF Inspection Report"
                             style={{
                               padding: '6px 10px',
@@ -679,17 +707,18 @@ export default function AdminDashboard() {
                               background: '#1e3a8a',
                               color: '#ffffff',
                               border: 'none',
-                              cursor: 'pointer',
+                              cursor: downloadingId === audit._id ? 'wait' : 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: 4,
                             }}
                           >
-                            📄 PDF
+                            {downloadingId === audit._id ? '⏳' : '📄'} PDF
                           </button>
                           <button
                             type="button"
-                            onClick={() => downloadSingleAuditCSV(audit)}
+                            onClick={() => handleCsvRow(audit)}
+                            disabled={downloadingId === audit._id}
                             title="Download Checklist as CSV"
                             style={{
                               padding: '6px 10px',
@@ -699,7 +728,7 @@ export default function AdminDashboard() {
                               background: '#f0fdf4',
                               color: '#15803d',
                               border: '1px solid #bbf7d0',
-                              cursor: 'pointer',
+                              cursor: downloadingId === audit._id ? 'wait' : 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: 4,

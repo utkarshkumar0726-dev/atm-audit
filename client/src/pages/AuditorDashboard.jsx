@@ -1646,8 +1646,53 @@ export default function AuditorDashboard() {
 
             {detailAudit && !loadingDetail && (
               <div>
-                {/* Captured Photos Gallery */}
-                <h3 style={{ fontSize: '1.05rem', margin: '0 0 12px' }}>ATM Overview Photos</h3>
+                {/* 1. Official ATM Installation Photos */}
+                {Array.from(new Set([...(detailAudit.atm?.links || []), detailAudit.atm?.link].filter(Boolean))).length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <h3 style={{ fontSize: '1.05rem', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>🏧 Official ATM Site / Installation Photos</span>
+                      <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 'normal' }}>
+                        ({Array.from(new Set([...(detailAudit.atm?.links || []), detailAudit.atm?.link].filter(Boolean))).length} photos)
+                      </span>
+                    </h3>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+                        gap: 10,
+                      }}
+                    >
+                      {Array.from(new Set([...(detailAudit.atm?.links || []), detailAudit.atm?.link].filter(Boolean))).map((url, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setLightboxPhoto(url)}
+                          style={{
+                            aspectRatio: '1',
+                            borderRadius: 8,
+                            overflow: 'hidden',
+                            cursor: 'pointer',
+                            border: '1px solid var(--color-border)',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                          }}
+                        >
+                          <img
+                            src={url}
+                            alt={`ATM Master ${i + 1}`}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Captured Inspection Photos Gallery */}
+                <h3 style={{ fontSize: '1.05rem', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>📷 Auditor On-Site Inspection Photos</span>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 'normal' }}>
+                    ({detailAudit.photos?.length || 0} photos)
+                  </span>
+                </h3>
                 {detailAudit.photos?.length > 0 ? (
                   <div
                     style={{
