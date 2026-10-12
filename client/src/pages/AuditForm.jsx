@@ -7,6 +7,8 @@ import AuditorNav from '../components/AuditorNav';
 import AdminNav from '../components/AdminNav';
 import CameraCapture from '../components/CameraCapture';
 import PhotoLightbox from '../components/PhotoLightbox';
+import BomChecklist from '../components/BomChecklist';
+import { isBomQuestion, createDefaultBomItems } from '../utils/bomData';
 import {
   saveDraftToStorage,
   loadDraftFromStorage,
@@ -23,13 +25,18 @@ function buildInitialStages(apiStages) {
   return apiStages.map((stage) => ({
     stageId: stage._id,
     stageName: stage.name,
-    questions: stage.questions.map((q) => ({
-      questionId: q._id,
-      questionText: q.text,
-      answer: '',
-      reason: '',
-      photos: [],
-    })),
+    questions: stage.questions.map((q) => {
+      const isBom = isBomQuestion(q);
+      return {
+        questionId: q._id,
+        questionText: q.text,
+        code: q.code,
+        answer: '',
+        reason: '',
+        photos: [],
+        bomItems: isBom ? createDefaultBomItems() : undefined,
+      };
+    }),
   }));
 }
 
@@ -213,12 +220,17 @@ export default function AuditForm() {
         questions: stage.questions.map((q) => {
           const pq = ps?.questions?.find((x) => x.questionId === q.questionId || x.code === q.code);
           const dq = ds?.questions?.find((x) => x.questionId === q.questionId || x.code === q.code);
+          const isBom = isBomQuestion(q);
+          const restoredBom = isBom
+            ? createDefaultBomItems(dq?.bomItems || pq?.bomItems)
+            : undefined;
 
           return {
             ...q,
             answer: dq?.answer || pq?.answer || '',
             reason: dq?.reason || pq?.reason || '',
             photos: (dq?.photos && dq.photos.length) ? dq.photos : (pq?.photos && pq.photos.length) ? pq.photos : [],
+            bomItems: restoredBom,
           };
         }),
       };
@@ -481,6 +493,46 @@ export default function AuditForm() {
           : {
               ...stage,
               questions: stage.questions.map((q) => (q.questionId === questionId ? { ...q, reason } : q)),
+            }
+      )
+    );
+  }
+
+  function updateQuestionBomItems(questionId, bomItems) {
+    setStages((prev) =>
+      prev.map((stage, i) =>
+        i !== stageIndex
+          ? stage
+          : {
+              ...stage,
+              questions: stage.questions.map((q) =>
+                q.questionId === questionId ? { ...q, bomItems } : q
+              ),
+            }
+      )
+    );
+  }
+
+  function syncBomMainAnswer(questionId, answer, suggestedReason) {
+    setStages((prev) =>
+      prev.map((stage, i) =>
+        i !== stageIndex
+          ? stage
+          : {
+              ...stage,
+              questions: stage.questions.map((q) => {
+                if (q.questionId !== questionId) return q;
+                return {
+                  ...q,
+                  answer,
+                  reason:
+                    answer === 'yes'
+                      ? ''
+                      : q.reason && !q.reason.startsWith('BOM Discrepancy')
+                      ? q.reason
+                      : suggestedReason,
+                };
+              }),
             }
       )
     );
@@ -1595,10 +1647,22 @@ export default function AuditForm() {
         {error && <p className="error" style={{ marginTop: 12 }}>{error}</p>}
 
         <div className="questions">
-          {currentStage.questions.map((q) => (
-            <div className="question" key={q.questionId}>
-              <p>{q.questionText}</p>
-              <div className="yes-no">
+          {currentStage.questions.map((q) => {
+            const isBom = isBomQuestion(q);
+            return (
+              <div className="question" key={q.questionId}>
+                <p>{q.questionText}</p>
+
+                {/* If BOM Question [HW-01], render full 33-item BOM interactive checklist */}
+                {isBom && (
+                  <BomChecklist
+                    items={q.bomItems}
+                    onChange={(updatedItems) => updateQuestionBomItems(q.questionId, updatedItems)}
+                    onSyncMainAnswer={(ans, suggestedReason) => syncBomMainAnswer(q.questionId, ans, suggestedReason)}
+                  />
+                )}
+
+                <div className="yes-no">
                 <label>
                   <input
                     type="radio"
@@ -1666,7 +1730,8 @@ export default function AuditForm() {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {processingPhotos && <p className="photo-hint">Processing photo...</p>}

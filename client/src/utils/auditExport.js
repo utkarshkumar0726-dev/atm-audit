@@ -787,10 +787,53 @@ export function printAuditReport(audit) {
                   ? `<div class="reason-box"><strong>Reason:</strong> ${q.reason}</div>`
                   : '';
 
+              const bomHtml =
+                q.bomItems?.length > 0
+                  ? `
+                <div style="margin-top: 8px; border: 1px solid #bfdbfe; border-radius: 4px; overflow: hidden; background: #f8fafc; font-size: 7.5pt;">
+                  <div style="padding: 4px 8px; background: #eff6ff; font-weight: 700; color: #1e3a8a; border-bottom: 1px solid #bfdbfe; display: flex; justify-content: space-between;">
+                    <span>📦 Bill of Materials (BOM) Component Verification</span>
+                    <span>${q.bomItems.filter((b) => b.status === 'yes').length}/${q.bomItems.length} Verified</span>
+                  </div>
+                  <table style="width: 100%; border-collapse: collapse; margin: 0; font-size: 7.2pt;">
+                    <thead>
+                      <tr style="background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
+                        <th style="padding: 3px 6px; width: 22px;">#</th>
+                        <th style="padding: 3px 6px;">BOM Component</th>
+                        <th style="padding: 3px 6px; width: 45px; text-align: center;">Qty</th>
+                        <th style="padding: 3px 6px; width: 60px; text-align: center;">Status</th>
+                        <th style="padding: 3px 6px;">Remark</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${q.bomItems
+                        .map(
+                          (item, i) => `
+                        <tr style="border-bottom: 1px solid #e2e8f0; background: ${item.status === 'no' ? '#fff1f2' : item.status === 'yes' ? '#f0fdf4' : '#ffffff'};">
+                          <td style="padding: 3px 6px; color: #64748b;">${item.id || i + 1}</td>
+                          <td style="padding: 3px 6px; font-weight: 600;">${item.name}</td>
+                          <td style="padding: 3px 6px; text-align: center;">${item.qty}</td>
+                          <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: ${item.status === 'yes' ? '#16a34a' : item.status === 'no' ? '#dc2626' : '#94a3b8'};">
+                            ${item.status ? item.status.toUpperCase() : 'PENDING'}
+                          </td>
+                          <td style="padding: 3px 6px; color: #dc2626;">${item.remark || ''}</td>
+                        </tr>
+                      `
+                        )
+                        .join('')}
+                    </tbody>
+                  </table>
+                </div>
+                `
+                  : '';
+
               return `
               <tr>
                 <td>${qIdx + 1}</td>
-                <td>${q.questionText || ''}</td>
+                <td>
+                  ${q.questionText || ''}
+                  ${bomHtml}
+                </td>
                 <td style="text-align: center;">
                   <span class="${ansClass}">${ansText}</span>
                 </td>

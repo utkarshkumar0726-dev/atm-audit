@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import Topbar from '../components/Topbar';
 import AuditorNav from '../components/AuditorNav';
 import PhotoLightbox from '../components/PhotoLightbox';
+import BomChecklist from '../components/BomChecklist';
 import { printAuditReport, downloadSingleAuditCSV } from '../utils/auditExport';
 
 // Normalization function to handle spelling variants common in Delhi / Indian addresses
@@ -1808,6 +1809,7 @@ export default function AuditorDashboard() {
                                       <strong>Reason:</strong> {q.reason}
                                     </div>
                                   )}
+                                  {q.bomItems?.length > 0 && <BomChecklist items={q.bomItems} readOnly={true} />}
                                   {q.photos?.length > 0 && (
                                     <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                                       {q.photos.map((qp, qpi) => (

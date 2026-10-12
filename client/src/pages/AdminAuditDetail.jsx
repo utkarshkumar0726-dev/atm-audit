@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import Topbar from '../components/Topbar';
 import PhotoLightbox from '../components/PhotoLightbox';
+import BomChecklist from '../components/BomChecklist';
 import { printAuditReport, downloadSingleAuditCSV } from '../utils/auditExport';
 
 export default function AdminAuditDetail() {
@@ -252,6 +253,7 @@ export default function AdminAuditDetail() {
                   </p>
                 )}
                 {q.answer === 'no' && q.reason && <p className="reason">Reason: {q.reason}</p>}
+                {q.bomItems?.length > 0 && <BomChecklist items={q.bomItems} readOnly={true} />}
                 {q.photos?.length > 0 && (
                   <div className="photo-grid photo-grid-view">
                     {q.photos.map((p, i) => (
