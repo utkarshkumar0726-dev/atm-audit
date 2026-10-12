@@ -34,34 +34,88 @@ function buildInitialStages(apiStages) {
 }
 
 // Downscale + compress a captured photo client-side so the base64 payload stays small.
-// Camera photos can be large (10MP+) and slow to decode on lower-end phones, so this
-// is guarded with a timeout rather than hanging forever if decoding never resolves.
+// If decoding or canvas compression fails for any reason (e.g. mobile gallery format/HEIC/RAW),
+// safely fallback to the original data URL so no user photo is ever dropped or lost.
 function compressImage(file, maxWidth = 1280, quality = 0.82) {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Photo processing timed out')), 20000);
+  return new Promise((resolve) => {
+    if (!file) {
+      resolve(null);
+      return;
+    }
     const reader = new FileReader();
+    let hasResolved = false;
+
+    const safeResolve = (val) => {
+      if (!hasResolved) {
+        hasResolved = true;
+        resolve(val);
+      }
+    };
+
+    const timeout = setTimeout(() => {
+      if (reader.result) {
+        safeResolve(reader.result);
+      } else {
+        safeResolve(null);
+      }
+    }, 15000);
+
     reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
+      const rawDataUrl = reader.result;
+      if (!rawDataUrl) {
         clearTimeout(timeout);
-        const scale = Math.min(1, maxWidth / img.width);
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = () => {
+        safeResolve(null);
+        return;
+      }
+
+      try {
+        const img = new Image();
+        img.onload = () => {
+          clearTimeout(timeout);
+          try {
+            const w = img.naturalWidth || img.width;
+            const h = img.naturalHeight || img.height;
+            if (!w || !h) {
+              safeResolve(rawDataUrl);
+              return;
+            }
+            const scale = Math.min(1, maxWidth / w);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(w * scale));
+            canvas.height = Math.max(1, Math.round(h * scale));
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              const compressed = canvas.toDataURL('image/jpeg', quality);
+              safeResolve(compressed || rawDataUrl);
+              return;
+            }
+          } catch (canvasErr) {
+            console.warn('Canvas compression error, falling back to original image:', canvasErr);
+          }
+          safeResolve(rawDataUrl);
+        };
+
+        img.onerror = (imgErr) => {
+          clearTimeout(timeout);
+          console.warn('Image decode error in compressImage, using raw data URL:', imgErr);
+          safeResolve(rawDataUrl);
+        };
+
+        img.src = rawDataUrl;
+      } catch (err) {
         clearTimeout(timeout);
-        reject(new Error('Could not decode image'));
-      };
-      img.src = reader.result;
+        console.warn('Exception during image compression, using raw data URL:', err);
+        safeResolve(rawDataUrl);
+      }
     };
-    reader.onerror = () => {
+
+    reader.onerror = (err) => {
       clearTimeout(timeout);
-      reject(new Error('Could not read file'));
+      console.error('FileReader error:', err);
+      safeResolve(null);
     };
+
     reader.readAsDataURL(file);
   });
 }
@@ -69,11 +123,16 @@ function compressImage(file, maxWidth = 1280, quality = 0.82) {
 // Processes each file independently so one bad/corrupt photo doesn't silently
 // drop the whole batch — returns whatever succeeded plus a count of failures.
 async function compressFiles(fileList) {
-  const results = await Promise.allSettled(Array.from(fileList).map((file) => compressImage(file)));
-  const succeeded = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
-  const failedCount = results.length - succeeded.length;
+  const files = Array.from(fileList || []).filter(Boolean);
+  if (files.length === 0) return { succeeded: [], failedCount: 0 };
+  const results = await Promise.allSettled(files.map((file) => compressImage(file)));
+  const succeeded = results
+    .filter((r) => r.status === 'fulfilled' && Boolean(r.value))
+    .map((r) => r.value);
+  const failedCount = files.length - succeeded.length;
   return { succeeded, failedCount };
 }
+
 
 const MAX_ATM_RESULTS = 20;
 
@@ -361,15 +420,25 @@ export default function AuditForm() {
   }
 
   async function handlePhotosChange(e) {
-    const files = e.target.files;
+    const fileList = Array.from(e.target.files || []);
     e.target.value = '';
-    if (!files || files.length === 0) return;
+    if (fileList.length === 0) return;
     setError('');
     setProcessingPhotos(true);
-    const { succeeded, failedCount } = await compressFiles(files);
-    setProcessingPhotos(false);
-    if (succeeded.length) setPhotos((prev) => [...prev, ...succeeded]);
-    if (failedCount) setError(`Could not process ${failedCount} photo(s). Please try again.`);
+    try {
+      const { succeeded, failedCount } = await compressFiles(fileList);
+      if (succeeded.length) {
+        setPhotos((prev) => [...prev, ...succeeded]);
+      }
+      if (failedCount) {
+        setError(`Could not process ${failedCount} photo(s). Please try again.`);
+      }
+    } catch (err) {
+      console.error('Error handling photos:', err);
+      setError('Failed to upload photo. Please try again.');
+    } finally {
+      setProcessingPhotos(false);
+    }
   }
 
   function removePhoto(index) {
@@ -479,16 +548,26 @@ export default function AuditForm() {
   }
 
   async function handleQuestionPhotoChange(e) {
-    const files = e.target.files;
+    const fileList = Array.from(e.target.files || []);
     const questionId = activePhotoQuestionId;
     e.target.value = '';
-    if (!files || files.length === 0 || !questionId) return;
+    if (fileList.length === 0 || !questionId) return;
     setError('');
     setProcessingPhotos(true);
-    const { succeeded, failedCount } = await compressFiles(files);
-    setProcessingPhotos(false);
-    if (succeeded.length) addQuestionPhotos(questionId, succeeded);
-    if (failedCount) setError(`Could not process ${failedCount} photo(s). Please try again.`);
+    try {
+      const { succeeded, failedCount } = await compressFiles(fileList);
+      if (succeeded.length) {
+        addQuestionPhotos(questionId, succeeded);
+      }
+      if (failedCount) {
+        setError(`Could not process ${failedCount} photo(s). Please try again.`);
+      }
+    } catch (err) {
+      console.error('Error handling question photos:', err);
+      setError('Failed to upload question photo. Please try again.');
+    } finally {
+      setProcessingPhotos(false);
+    }
   }
 
   function isStageComplete(stage) {
@@ -1148,7 +1227,7 @@ export default function AuditForm() {
             <input
               ref={cameraInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif"
               capture="environment"
               onChange={handlePhotosChange}
               style={{ display: 'none' }}
@@ -1156,7 +1235,7 @@ export default function AuditForm() {
             <input
               ref={galleryInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif"
               multiple
               onChange={handlePhotosChange}
               style={{ display: 'none' }}
@@ -1270,13 +1349,30 @@ export default function AuditForm() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-            {photos[0] && <img src={photos[0]} alt="ATM" className="photo-thumb" />}
+            {photos[0] && (
+              <img
+                src={photos[0]}
+                alt="ATM"
+                className="photo-thumb"
+                onClick={() => setLightboxPhoto(photos[0])}
+                style={{ cursor: 'pointer' }}
+                title="Click to view ATM photo"
+              />
+            )}
             <div>
               <h1 style={{ margin: 0 }}>ATM Audit Form</h1>
               <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
                 ATM ID: <strong>{selectedAtm.atmId}</strong> &middot; Area: <strong>{selectedAtm.area?.name}</strong>
                 {selectedAtm.branchName && <> &middot; <strong>{selectedAtm.branchName}</strong></>}
-                {photos.length > 1 && <> &middot; {photos.length} photos attached</>}
+                {photos.length > 0 && <> &middot; {photos.length} photo{photos.length > 1 ? 's' : ''} attached</>}
+                <button
+                  type="button"
+                  className="link"
+                  style={{ marginLeft: 8, fontSize: '0.8rem', textDecoration: 'underline' }}
+                  onClick={() => galleryInputRef.current?.click()}
+                >
+                  + Add ATM Photo
+                </button>
               </p>
               {selectedAtm.address && (
                 <p style={{ margin: '4px 0 0', color: '#475569', fontSize: '0.84rem', lineHeight: 1.4, wordBreak: 'break-word', maxWidth: 650 }}>
@@ -1578,7 +1674,7 @@ export default function AuditForm() {
         <input
           ref={questionCameraInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif"
           capture="environment"
           onChange={handleQuestionPhotoChange}
           style={{ display: 'none' }}
@@ -1586,9 +1682,25 @@ export default function AuditForm() {
         <input
           ref={questionGalleryInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif"
           multiple
           onChange={handleQuestionPhotoChange}
+          style={{ display: 'none' }}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*,image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif"
+          capture="environment"
+          onChange={handlePhotosChange}
+          style={{ display: 'none' }}
+        />
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*,image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif"
+          multiple
+          onChange={handlePhotosChange}
           style={{ display: 'none' }}
         />
 
