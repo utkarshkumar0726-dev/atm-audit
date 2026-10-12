@@ -75,13 +75,13 @@ export function downloadSingleAuditCSV(audit) {
 
   // Header Section
   lines.push('================================================================================');
-  lines.push(`PUNJAB & SIND BANK - ATM e-SURVEILLANCE & SECURITY AUDIT REPORT`);
+  lines.push(`ATM e-SURVEILLANCE & SECURITY AUDIT REPORT`);
   lines.push('================================================================================');
   lines.push(`ATM ID,${sanitizeCSV(atmId)}`);
   lines.push(`Branch Name,${sanitizeCSV(audit.atm?.branchName || audit.atm?.location || '')}`);
   lines.push(`Area / Zone,${sanitizeCSV(audit.area || audit.atm?.area?.name || 'General')}`);
   lines.push(`Site Address,${sanitizeCSV(audit.atm?.address || '')}`);
-  lines.push(`Bank Identifier Code (BIC),${sanitizeCSV(audit.atm?.bic || '')}`);
+  lines.push(`Identifier Code (BIC),${sanitizeCSV(audit.atm?.bic || '')}`);
   lines.push(`Device ID,${sanitizeCSV(audit.atm?.deviceId || '')}`);
   lines.push(`Auditor Name,${sanitizeCSV(auditorName)}`);
   lines.push(`Auditor Username,${sanitizeCSV(auditorUser)}`);
@@ -302,26 +302,20 @@ export function printAuditReport(audit) {
       line-height: 1.45;
     }
     .header-bar {
-      border-bottom: 3px solid #1e3a8a;
-      padding-bottom: 12px;
-      margin-bottom: 16px;
+      border-bottom: 2px solid #1e3a8a;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
     }
-    .bank-title {
-      font-size: 18pt;
+    .report-title {
+      font-size: 16pt;
       font-weight: 800;
       color: #1e3a8a;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.01em;
       margin: 0;
       text-transform: uppercase;
-    }
-    .report-subtitle {
-      font-size: 10pt;
-      color: #475569;
-      font-weight: 600;
-      margin: 3px 0 0;
     }
     .badge {
       display: inline-block;
@@ -506,23 +500,7 @@ export function printAuditReport(audit) {
       margin: 2px 4px 2px 0;
     }
 
-    /* Sign-off */
-    .signoff-section {
-      margin-top: 30px;
-      padding-top: 16px;
-      border-top: 2px dashed #94a3b8;
-      display: flex;
-      justify-content: space-between;
-      page-break-inside: avoid;
-    }
-    .signoff-box {
-      width: 45%;
-    }
-    .sign-line {
-      margin-top: 36px;
-      border-bottom: 1px solid #0f172a;
-      width: 200px;
-    }
+
 
     .no-print {
       display: flex;
@@ -584,8 +562,7 @@ export function printAuditReport(audit) {
 
   <div class="header-bar">
     <div>
-      <h1 class="bank-title">PUNJAB & SIND BANK</h1>
-      <div class="report-subtitle">e-Surveillance & Security Audit Inspection Report</div>
+      <h1 class="report-title">ATM Audit Report</h1>
     </div>
     <div>
       <span class="badge ${isCompleted ? 'badge-completed' : 'badge-inprogress'}">
@@ -620,7 +597,7 @@ export function printAuditReport(audit) {
       <span class="meta-val">${address || 'On-site'}</span>
     </div>
     <div class="meta-item">
-      <span class="meta-label">Bank BIC Code</span>
+      <span class="meta-label">BIC Code</span>
       <span class="meta-val">${bic || 'N/A'}</span>
     </div>
     <div class="meta-item">
@@ -852,24 +829,7 @@ export function printAuditReport(audit) {
     })
     .join('')}
 
-  <div class="signoff-section">
-    <div class="signoff-box">
-      <div style="font-size: 8pt; color: #64748b; line-height: 1.4;">
-        I hereby verify that the e-surveillance and ATM equipment audit was conducted on-site in adherence to bank security norms.
-      </div>
-      <div class="sign-line"></div>
-      <div style="font-size: 9pt; font-weight: 700; margin-top: 4px;">${auditorName}</div>
-      <div style="font-size: 7.5pt; color: #64748b;">Auditor Signature & Date</div>
-    </div>
-    <div class="signoff-box" style="text-align: right;">
-      <div style="font-size: 8pt; color: #64748b; line-height: 1.4;">
-        Verified & Acknowledged by Bank Operations / Security In-Charge.
-      </div>
-      <div class="sign-line" style="margin-left: auto;"></div>
-      <div style="font-size: 9pt; font-weight: 700; margin-top: 4px;">Bank / Branch Official</div>
-      <div style="font-size: 7.5pt; color: #64748b;">Seal & Signature</div>
-    </div>
-  </div>
+
 
   <script>
     function ensureAllImagesLoadedAndPrint() {
