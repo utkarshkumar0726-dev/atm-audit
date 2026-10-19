@@ -788,7 +788,7 @@ export function printAuditReport(audit) {
                           (item, i) => `
                         <tr style="border-bottom: 1px solid #e2e8f0; background: ${item.status === 'no' ? '#fff1f2' : item.status === 'yes' ? '#f0fdf4' : '#ffffff'};">
                           <td style="padding: 3px 6px; color: #64748b;">${item.id || i + 1}</td>
-                          <td style="padding: 3px 6px; font-weight: 600;">${item.name}</td>
+                          <td style="padding: 3px 6px; font-weight: 600;">${item.name}${item.desc ? ` <span style="color: #64748b; font-size: 6.8pt; font-weight: normal;">(${item.desc})</span>` : ''}</td>
                           <td style="padding: 3px 6px; text-align: center;">${item.qty}</td>
                           <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: ${item.status === 'yes' ? '#16a34a' : item.status === 'no' ? '#dc2626' : '#94a3b8'};">
                             ${item.status ? item.status.toUpperCase() : 'PENDING'}

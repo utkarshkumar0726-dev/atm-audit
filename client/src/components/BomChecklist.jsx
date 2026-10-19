@@ -72,9 +72,10 @@ export default function BomChecklist({
       if (search) {
         const query = search.toLowerCase();
         const matchesName = item.name.toLowerCase().includes(query);
+        const matchesDesc = (item.desc || '').toLowerCase().includes(query);
         const matchesQty = String(item.qty).includes(query);
         const matchesRemark = (item.remark || '').toLowerCase().includes(query);
-        if (!matchesName && !matchesQty && !matchesRemark) return false;
+        if (!matchesName && !matchesDesc && !matchesQty && !matchesRemark) return false;
       }
       if (filter === 'yes') return item.status === 'yes';
       if (filter === 'no') return item.status === 'no';
@@ -341,6 +342,11 @@ export default function BomChecklist({
                           <div style={{ fontWeight: 600, color: '#1e293b' }}>
                             {item.name}
                           </div>
+                          {item.desc && (
+                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
+                              Make/Model: <strong style={{ color: '#475569' }}>{item.desc}</strong>
+                            </div>
+                          )}
                           {/* Remark input if No */}
                           {!readOnly && isNo && (
                             <div style={{ marginTop: 6 }}>
