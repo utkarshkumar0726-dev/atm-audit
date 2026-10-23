@@ -1904,22 +1904,23 @@
     "vendor": "CMS",
     "bic": "A0121",
     "branchName": "AJRONDA",
-    "inchargeName": "SUMAN SHARMA",
+    "inchargeName": "RISHABH SHARMA",
     "inchargeDesig": "CHIEF MANAGER- IN CHARGE",
-    "inchargeContact": "9899748099",
+    "inchargeContact": "8882853440",
     "address": "SECTOR-16 A , NEAR OLD METRO STATION ,FARIDABAD HARYANA",
     "pincode": "",
     "state": "HARYANA",
     "siteType": "ONSITE",
     "location": "AJRONDA",
     "createdAt": "2026-09-21T08:55:55.674Z",
-    "updatedAt": "2026-09-24T05:59:38.561Z",
-    "__v": 1,
+    "updatedAt": "2026-10-23T09:43:13.894Z",
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11b5c7e9b25b57466b6",
@@ -1929,22 +1930,23 @@
     "vendor": "CMS",
     "bic": "B1043",
     "branchName": "BALABGARH",
-    "inchargeName": "AMIT KUMAR",
+    "inchargeName": "PRIYANKA KANWAR",
     "inchargeDesig": "SENIOR MANAGER- IN CHARGE",
-    "inchargeContact": "9619634856",
+    "inchargeContact": "8860738754",
     "address": "NEW MARKET, MAIN BAZAR, BALLABGARH ,HARYANA",
     "pincode": "",
     "state": "HARYANA",
     "siteType": "ONSITE",
     "location": "BALABGARH",
     "createdAt": "2026-09-21T08:55:55.700Z",
-    "updatedAt": "2026-09-24T05:59:38.597Z",
-    "__v": 1,
+    "updatedAt": "2026-10-23T09:43:13.973Z",
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11b5c7e9b25b57466b7",
@@ -1964,12 +1966,13 @@
     "location": "BAHADURGARH",
     "createdAt": "2026-09-21T08:55:55.728Z",
     "updatedAt": "2026-09-24T05:59:38.643Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11b5c7e9b25b57466b8",
@@ -1989,12 +1992,13 @@
     "location": "BAWAL",
     "createdAt": "2026-09-21T08:55:55.753Z",
     "updatedAt": "2026-09-24T05:59:38.674Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11b5c7e9b25b57466b9",
@@ -2014,12 +2018,13 @@
     "location": "Charkhi Dadri",
     "createdAt": "2026-09-21T08:55:55.780Z",
     "updatedAt": "2026-09-24T05:59:38.705Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11b5c7e9b25b57466ba",
@@ -2039,12 +2044,13 @@
     "location": "Dharuhera",
     "createdAt": "2026-09-21T08:55:55.806Z",
     "updatedAt": "2026-09-24T05:59:38.738Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11b5c7e9b25b57466bb",
@@ -2064,12 +2070,13 @@
     "location": "NIT FARIDABAD",
     "createdAt": "2026-09-21T08:55:55.833Z",
     "updatedAt": "2026-09-24T05:59:38.775Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11b5c7e9b25b57466bc",
@@ -2089,12 +2096,13 @@
     "location": "GURUGRAM MAIN",
     "createdAt": "2026-09-21T08:55:55.859Z",
     "updatedAt": "2026-09-24T05:59:38.805Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11b5c7e9b25b57466bd",
@@ -2104,22 +2112,23 @@
     "vendor": "CMS",
     "bic": "G0890",
     "branchName": "SECTOR 10A, GURUGRAM",
-    "inchargeName": "VIVEK TRIPATHI",
+    "inchargeName": "PRATAP SINGH",
     "inchargeDesig": "CHIEF MANAGER- IN CHARGE",
-    "inchargeContact": "9555877050",
+    "inchargeContact": "9871287597",
     "address": "SCO -98 HUDA MARKET -10 A GURUGRAM HARYANA",
     "pincode": "",
     "state": "HARYANA",
     "siteType": "ONSITE",
     "location": "SECTOR 10A, GURUGRAM",
     "createdAt": "2026-09-21T08:55:55.888Z",
-    "updatedAt": "2026-09-24T05:59:38.837Z",
-    "__v": 1,
+    "updatedAt": "2026-10-23T09:43:14.432Z",
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11b5c7e9b25b57466be",
@@ -2139,12 +2148,13 @@
     "location": "SECTOR 31, GURUGRAM",
     "createdAt": "2026-09-21T08:55:55.914Z",
     "updatedAt": "2026-09-24T05:59:38.867Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11b5c7e9b25b57466bf",
@@ -2154,22 +2164,23 @@
     "vendor": "CMS",
     "bic": "G1148",
     "branchName": "SECTOR 5, HUDA MARKET",
-    "inchargeName": "TANAYA CHAKRABORTY",
-    "inchargeDesig": "MANAGER- IN CHARGE",
-    "inchargeContact": "8527194747",
+    "inchargeName": "AMIT KUMAR",
+    "inchargeDesig": "SENIOR MANAGER- IN CHARGE",
+    "inchargeContact": "9619634856",
     "address": "DSS -50 , SECTOR 5 HUDA MARKET ,GURUGRAM,HARYANA",
     "pincode": "",
     "state": "HARYANA",
     "siteType": "ONSITE",
     "location": "SECTOR 5, HUDA MARKET",
     "createdAt": "2026-09-21T08:55:55.940Z",
-    "updatedAt": "2026-09-24T05:59:38.898Z",
-    "__v": 1,
+    "updatedAt": "2026-10-23T09:43:14.569Z",
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11b5c7e9b25b57466c0",
@@ -2189,12 +2200,13 @@
     "location": "SECTOR 44, GURUGRAM",
     "createdAt": "2026-09-21T08:55:55.968Z",
     "updatedAt": "2026-09-24T05:59:38.929Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11b5c7e9b25b57466c1",
@@ -2202,24 +2214,25 @@
     "atmId": "SPSBP170901",
     "area": "6ab0f1195c7e9b25b574666a",
     "vendor": "CMS",
-    "bic": "G1709",
+    "bic": "S1709",
     "branchName": "SECT 102 GURUGRAM",
-    "inchargeName": "KUNAL GAUTAM",
-    "inchargeDesig": "SENIOR MANAGER- IN CHARGE",
-    "inchargeContact": "9910566805",
+    "inchargeName": "SHRUTI MALHOTRA",
+    "inchargeDesig": "MANAGER- IN CHARGE",
+    "inchargeContact": "9463169925",
     "address": "Shop No. 262,263 264, Plot C 01, Sector 4, Gaur City Centre, Greater Noida West",
     "pincode": "",
     "state": "HARYANA",
     "siteType": "ONSITE",
     "location": "SECT 102 GURUGRAM",
     "createdAt": "2026-09-21T08:55:55.995Z",
-    "updatedAt": "2026-09-24T05:59:38.959Z",
-    "__v": 1,
+    "updatedAt": "2026-10-23T09:43:14.702Z",
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466c2",
@@ -2229,22 +2242,23 @@
     "vendor": "CMS",
     "bic": "J0724",
     "branchName": "JAMALPUR CHOWK",
-    "inchargeName": "PRAVEEN KUMAR",
+    "inchargeName": "TANAYA CHAKRABORTY",
     "inchargeDesig": "MANAGER- IN CHARGE",
-    "inchargeContact": "9997135704",
+    "inchargeContact": "8527194747",
     "address": "PATAUDI ROAD , JAMALPUR ,GURUGRAM,HARYANA",
     "pincode": "",
     "state": "HARYANA",
     "siteType": "ONSITE",
     "location": "JAMALPUR CHOWK",
     "createdAt": "2026-09-21T08:55:56.021Z",
-    "updatedAt": "2026-09-24T05:59:39.017Z",
-    "__v": 1,
+    "updatedAt": "2026-10-23T09:43:14.771Z",
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466c3",
@@ -2264,12 +2278,13 @@
     "location": "JIND",
     "createdAt": "2026-09-21T08:55:56.048Z",
     "updatedAt": "2026-09-24T05:59:39.049Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466c4",
@@ -2289,13 +2304,14 @@
     "location": "JHAJJAR",
     "createdAt": "2026-09-21T08:55:56.080Z",
     "updatedAt": "2026-09-22T10:50:30.859Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "PNSBP1A1583",
     "link": "https://assets-ap1.iviscloud.net:8443/sitemanager-archive/SMI/53009/20260728163248_SPSBV153401_page-0001.jpg",
     "links": [
       "https://assets-ap1.iviscloud.net:8443/sitemanager-archive/SMI/53009/20260728163248_SPSBV153401_page-0001.jpg",
       "https://assets-ap1.iviscloud.net:8443/sitemanager-archive/SMI/53009/20260728163258_SPSBV153401_page-0002.jpg"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466c5",
@@ -2315,12 +2331,13 @@
     "location": "MEHAM",
     "createdAt": "2026-09-21T08:55:56.106Z",
     "updatedAt": "2026-09-24T05:59:39.078Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466c6",
@@ -2330,22 +2347,23 @@
     "vendor": "CMS",
     "bic": "M1682",
     "branchName": "MAHENDRAGARH",
-    "inchargeName": "DHARMVIR",
+    "inchargeName": "TUSHAR GUPTA",
     "inchargeDesig": "SENIOR MANAGER- IN CHARGE",
-    "inchargeContact": "8968833187",
+    "inchargeContact": "9971976653",
     "address": "Khatoni No 55, Main Dadri Mahendragarh Road, Mahendragarh",
     "pincode": "",
     "state": "HARYANA",
     "siteType": "ONSITE",
     "location": "MAHENDRAGARH",
     "createdAt": "2026-09-21T08:55:56.133Z",
-    "updatedAt": "2026-09-24T05:59:39.112Z",
-    "__v": 1,
+    "updatedAt": "2026-10-23T09:43:15.197Z",
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466c7",
@@ -2365,12 +2383,13 @@
     "location": "NARNAUL",
     "createdAt": "2026-09-21T08:55:56.159Z",
     "updatedAt": "2026-09-24T05:59:39.144Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466c8",
@@ -2390,12 +2409,13 @@
     "location": "PALWAL",
     "createdAt": "2026-09-21T08:55:56.185Z",
     "updatedAt": "2026-09-24T05:59:39.177Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466c9",
@@ -2415,12 +2435,13 @@
     "location": "ROHTAK",
     "createdAt": "2026-09-21T08:55:56.211Z",
     "updatedAt": "2026-09-24T05:59:39.208Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466ca",
@@ -2440,12 +2461,13 @@
     "location": "SUBHAS ROAD, ROHTAK",
     "createdAt": "2026-09-21T08:55:56.237Z",
     "updatedAt": "2026-09-24T05:59:39.238Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466cb",
@@ -2465,12 +2487,13 @@
     "location": "SONIPAT",
     "createdAt": "2026-09-21T08:55:56.262Z",
     "updatedAt": "2026-09-24T05:59:39.268Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466cc",
@@ -2490,12 +2513,13 @@
     "location": "SAFIDON",
     "createdAt": "2026-09-21T08:55:56.288Z",
     "updatedAt": "2026-09-24T05:59:39.298Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466cd",
@@ -2505,22 +2529,23 @@
     "vendor": "CMS",
     "bic": "T0966",
     "branchName": "TIKAWALI",
-    "inchargeName": "DEEPAK KUMAR ARYA",
+    "inchargeName": "SONAM CHAKRAVARTY",
     "inchargeDesig": "MANAGER- IN CHARGE",
-    "inchargeContact": "8557809193",
+    "inchargeContact": "8506946777",
     "address": "BHOPANI ROAD , GAON- TIKAWALI POST KHERIKALA, FARIDABAD",
     "pincode": "",
     "state": "HARYANA",
     "siteType": "ONSITE",
     "location": "TIKAWALI",
     "createdAt": "2026-09-21T08:55:56.313Z",
-    "updatedAt": "2026-09-24T05:59:39.330Z",
-    "__v": 1,
+    "updatedAt": "2026-10-23T09:43:15.670Z",
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466ce",
@@ -2540,12 +2565,13 @@
     "location": "ALWAR",
     "createdAt": "2026-09-21T08:55:56.339Z",
     "updatedAt": "2026-09-24T05:59:39.359Z",
-    "__v": 1,
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ab0f11c5c7e9b25b57466cf",
@@ -2555,22 +2581,23 @@
     "vendor": "CMS",
     "bic": "B0974",
     "branchName": "BHIWADI DISTT ALWAR",
-    "inchargeName": "RAMNARAYAN MEENA",
+    "inchargeName": "NIKHIL KUMAR CHATRANI",
     "inchargeDesig": "MANAGER- IN CHARGE",
-    "inchargeContact": "9855147314",
+    "inchargeContact": "8963005067",
     "address": "C-3 A , RICCO CHOWK, HOTEL SWAGAT, BHIWADI",
     "pincode": "",
     "state": "RAJASTHAN",
     "siteType": "ONSITE",
     "location": "BHIWADI DISTT ALWAR",
     "createdAt": "2026-09-21T08:55:56.364Z",
-    "updatedAt": "2026-09-24T05:59:39.389Z",
-    "__v": 1,
+    "updatedAt": "2026-10-23T09:43:15.801Z",
+    "__v": 2,
     "deviceId": "",
     "link": "/documents/BOM_Bill_of_Materials.docx",
     "links": [
       "/documents/BOM_Bill_of_Materials.docx"
-    ]
+    ],
+    "additionalContacts": []
   },
   {
     "_id": "6ac6148c690158cf44195a76",
