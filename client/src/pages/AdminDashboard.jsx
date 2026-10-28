@@ -4,7 +4,12 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Topbar from '../components/Topbar';
 import AdminNav from '../components/AdminNav';
-import { downloadAuditsSummaryCSV, downloadSingleAuditCSV, printAuditReport } from '../utils/auditExport';
+import {
+  downloadAuditsSummaryCSV,
+  downloadSingleAuditCSV,
+  printAuditReport,
+  downloadMasterAuditExcel,
+} from '../utils/auditExport';
 
 function getStageStats(stage) {
   if (!stage || !Array.isArray(stage.questions)) return { answered: 0, total: 0, isComplete: false };
@@ -87,6 +92,28 @@ export default function AdminDashboard() {
       downloadSingleAuditCSV(auditItem);
     } finally {
       setDownloadingId(null);
+    }
+  }
+
+  const [exportingMasterExcel, setExportingMasterExcel] = useState(false);
+
+  async function handleDownloadMasterExcel() {
+    setExportingMasterExcel(true);
+    setFeedback(null);
+    try {
+      const fname = await downloadMasterAuditExcel(api);
+      setFeedback({
+        type: 'success',
+        message: `Master Consolidated Excel Report (${fname}) downloaded successfully! Contains all 101 sites, full observations, checkpoints matrix, and BOM breakdown.`,
+      });
+    } catch (err) {
+      console.error('Failed to download master Excel:', err);
+      setFeedback({
+        type: 'error',
+        message: err.response?.data?.message || err.message || 'Failed to download master Excel report',
+      });
+    } finally {
+      setExportingMasterExcel(false);
     }
   }
 
@@ -183,18 +210,49 @@ export default function AdminDashboard() {
               Track audits across Stage 1, Stage 2, Stage 3, and 100% Complete Audits.
             </p>
           </div>
-          <span
-            style={{
-              padding: '6px 14px',
-              borderRadius: 20,
-              background: '#eff6ff',
-              color: '#1d4ed8',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-            }}
-          >
-            📊 Total Audits: {audits.length}
-          </span>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleDownloadMasterExcel}
+              disabled={exportingMasterExcel}
+              style={{
+                padding: '8px 18px',
+                borderRadius: 8,
+                background: exportingMasterExcel
+                  ? '#94a3b8'
+                  : 'linear-gradient(135deg, #15803d 0%, #166534 100%)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 2px 4px rgba(21, 128, 61, 0.25)',
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                cursor: exportingMasterExcel ? 'wait' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                transition: 'all 0.2s',
+              }}
+              title="Download consolidated Excel report with all 101 sites observations, checkpoint matrix and BOM breakdown"
+            >
+              <span style={{ fontSize: '1.1rem' }}>📑</span>
+              {exportingMasterExcel
+                ? 'Generating Master Excel...'
+                : 'Download Master Excel (All 101 Sites Observations)'}
+            </button>
+
+            <span
+              style={{
+                padding: '6px 14px',
+                borderRadius: 20,
+                background: '#eff6ff',
+                color: '#1d4ed8',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+              }}
+            >
+              📊 Total Audits: {audits.length}
+            </span>
+          </div>
         </div>
 
         {feedback && (
@@ -490,6 +548,30 @@ export default function AdminDashboard() {
           />
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleDownloadMasterExcel}
+              disabled={exportingMasterExcel}
+              title="Download complete Master Observation Sheet for all 101 sites in Excel (.xlsx)"
+              style={{
+                padding: '9px 16px',
+                borderRadius: 8,
+                background: exportingMasterExcel ? '#94a3b8' : '#15803d',
+                color: '#ffffff',
+                border: '1px solid #166534',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: exportingMasterExcel ? 'wait' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              }}
+            >
+              <span>📑</span>
+              {exportingMasterExcel ? 'Generating Master Excel...' : 'Master Excel (All 101 Sites)'}
+            </button>
+
             <button
               type="button"
               onClick={() => downloadAuditsSummaryCSV(displayedAudits, `Audits_${activeSubmodule}`)}

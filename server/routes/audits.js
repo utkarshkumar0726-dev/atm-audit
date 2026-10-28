@@ -2,6 +2,7 @@ const express = require('express');
 const { Audit, User, AuditLog, AuditDraft, Atm } = require('../models');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { parseUserAgent, getClientIp } = require('../utils/agentParser');
+const { generateMasterAuditExcelBuffer } = require('../services/masterExcelService');
 
 const router = express.Router();
 
@@ -487,6 +488,26 @@ router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
   } catch (err) {
     console.error('Fetch all audits error:', err);
     res.status(500).json({ message: 'Server error fetching audits' });
+  }
+});
+
+// GET /api/audits/export-master-excel - Admin downloads consolidated master Excel report for all 101 sites
+router.get('/export-master-excel', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const excelBuffer = await generateMasterAuditExcelBuffer();
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    const filename = `PSB_ATM_eSurveillance_Master_Audit_Report_${dateStamp}.xlsx`;
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', excelBuffer.length);
+    res.send(excelBuffer);
+  } catch (err) {
+    console.error('Error generating master audit excel:', err);
+    res.status(500).json({ message: 'Failed to generate master audit Excel report: ' + err.message });
   }
 });
 

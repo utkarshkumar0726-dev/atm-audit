@@ -7,7 +7,7 @@ function sanitizeCSV(val) {
 }
 
 function triggerDownload(content, filename, type = 'text/csv;charset=utf-8;') {
-  const blob = new Blob([content], { type });
+  const blob = content instanceof Blob ? content : new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
@@ -16,6 +16,17 @@ function triggerDownload(content, filename, type = 'text/csv;charset=utf-8;') {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+// Download Master Consolidated Audit Report (All 101 Sites) as Multi-Sheet Excel (.xlsx)
+export async function downloadMasterAuditExcel(apiClient) {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const filename = `PSB_ATM_eSurveillance_Master_Audit_Report_${dateStr}.xlsx`;
+  const response = await apiClient.get('/audits/export-master-excel', {
+    responseType: 'blob',
+  });
+  triggerDownload(response.data, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  return filename;
 }
 
 // Extract all ATM master photos and auditor inspection photos
