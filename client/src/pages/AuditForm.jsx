@@ -236,7 +236,11 @@ export default function AuditForm() {
       };
     });
 
-    const savedSet = new Set(prevStages.map((s) => s.stageId || s.stageName));
+    const savedSet = new Set(
+      prevStages
+        .filter((s) => (s.questions || []).some((q) => q.answer === 'yes' || q.answer === 'no'))
+        .map((s) => s.stageId || s.stageName)
+    );
     setSavedStageIds(savedSet);
 
     // Photos: draft photos > prev audit photos > []
