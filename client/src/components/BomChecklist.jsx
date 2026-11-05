@@ -3,6 +3,7 @@ import { BOM_ITEMS, createDefaultBomItems, getBomSummary } from '../utils/bomDat
 
 export default function BomChecklist({
   items,
+  vendor = 'CMS',
   onChange,
   onSyncMainAnswer,
   readOnly = false,
@@ -13,11 +14,10 @@ export default function BomChecklist({
 
   const bomItems = useMemo(() => {
     if (Array.isArray(items) && items.length > 0) {
-      // Ensure all 33 items are represented
-      return createDefaultBomItems(items);
+      return createDefaultBomItems(items, vendor);
     }
-    return createDefaultBomItems();
-  }, [items]);
+    return createDefaultBomItems(null, vendor);
+  }, [items, vendor]);
 
   const summary = useMemo(() => getBomSummary(bomItems), [bomItems]);
 
@@ -191,7 +191,7 @@ export default function BomChecklist({
                 <button
                   type="button"
                   onClick={() => handleMarkAll('yes')}
-                  title="Mark all 33 items as Verified (Yes)"
+                  title={`Mark all ${bomItems.length} items as Verified (Yes)`}
                   style={{
                     padding: '6px 12px',
                     borderRadius: 6,

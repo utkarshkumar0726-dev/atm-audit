@@ -21,7 +21,7 @@ import {
 const canUseLiveCamera =
   typeof window !== 'undefined' && window.isSecureContext && !!navigator.mediaDevices?.getUserMedia;
 
-function buildInitialStages(apiStages) {
+function buildInitialStages(apiStages, vendor = 'CMS') {
   return apiStages.map((stage) => ({
     stageId: stage._id,
     stageName: stage.name,
@@ -34,7 +34,7 @@ function buildInitialStages(apiStages) {
         answer: '',
         reason: '',
         photos: [],
-        bomItems: isBom ? createDefaultBomItems() : undefined,
+        bomItems: isBom ? createDefaultBomItems(null, vendor) : undefined,
       };
     }),
   }));
@@ -207,7 +207,8 @@ export default function AuditForm() {
       // No existing audit for this ATM yet
     }
 
-    const initialStages = buildInitialStages(baseChecklist);
+    const atmVendor = atm.vendor || 'CMS';
+    const initialStages = buildInitialStages(baseChecklist, atmVendor);
     const prevStages = prevAudit?.stages || [];
     const draftStages = existingDraft?.stages || [];
 
@@ -222,7 +223,7 @@ export default function AuditForm() {
           const dq = ds?.questions?.find((x) => x.questionId === q.questionId || x.code === q.code);
           const isBom = isBomQuestion(q);
           const restoredBom = isBom
-            ? createDefaultBomItems(dq?.bomItems || pq?.bomItems)
+            ? createDefaultBomItems(dq?.bomItems || pq?.bomItems, atmVendor)
             : undefined;
 
           return {
@@ -1657,10 +1658,11 @@ export default function AuditForm() {
               <div className="question" key={q.questionId}>
                 <p>{q.questionText}</p>
 
-                {/* If BOM Question [HW-01], render full 33-item BOM interactive checklist */}
+                {/* If BOM Question [HW-01], render full vendor-specific BOM interactive checklist */}
                 {isBom && (
                   <BomChecklist
                     items={q.bomItems}
+                    vendor={selectedAtm?.vendor || 'CMS'}
                     onChange={(updatedItems) => updateQuestionBomItems(q.questionId, updatedItems)}
                     onSyncMainAnswer={(ans, suggestedReason) => syncBomMainAnswer(q.questionId, ans, suggestedReason)}
                   />
