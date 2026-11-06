@@ -452,7 +452,11 @@ router.get('/mine', requireAuth, requireRole('auditor'), async (req, res) => {
       auditorId,
       ...(mongoose.Types.ObjectId.isValid(auditorId) ? [new mongoose.Types.ObjectId(auditorId)] : []),
     ];
-    const rawAudits = await Audit.find({ auditor: { $in: auditorQueries } }).sort({ createdAt: -1 });
+    // Exclude large inline base64 photos from list endpoint to keep response fast (<100KB vs >130MB)
+    const rawAudits = await Audit.find(
+      { auditor: { $in: auditorQueries } },
+      { photos: { $slice: 0 }, 'stages.questions.photos': { $slice: 0 } }
+    ).sort({ createdAt: -1 });
     
     // Group and consolidate any duplicate records for the same ATM
     const atmMap = new Map();
