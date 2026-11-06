@@ -68,6 +68,17 @@ export function extractAuditPhotos(audit) {
   return { atmPhotos, inspectionPhotos, questionPhotos };
 }
 
+export function countAnsweredStages(audit) {
+  if (!audit || !Array.isArray(audit.stages)) return 0;
+  let count = 0;
+  audit.stages.forEach((st) => {
+    const hasAnswer = (st.questions || []).some((q) => q.answer === 'yes' || q.answer === 'no');
+    const hasPhotos = (st.questions || []).some((q) => q.photos && q.photos.length > 0);
+    if (hasAnswer || hasPhotos) count++;
+  });
+  return count;
+}
+
 // 1. Export Detailed Single Audit Report as CSV
 export function downloadSingleAuditCSV(audit) {
   if (!audit) return;
@@ -77,7 +88,9 @@ export function downloadSingleAuditCSV(audit) {
   const auditorUser = audit.auditor?.username || '';
   const dateStr = audit.completedAt || audit.createdAt || new Date().toISOString();
   const formattedDate = new Date(dateStr).toLocaleString();
-  const statusStr = audit.isCompleted ? 'COMPLETED (100%)' : `IN PROGRESS (${audit.stages?.length || 0}/3 Stages)`;
+  const answeredCount = countAnsweredStages(audit);
+  const isComplete = audit.isCompleted || answeredCount >= 3;
+  const statusStr = isComplete ? 'COMPLETED (100%)' : `IN PROGRESS (${answeredCount}/3 Stages)`;
 
   const { atmPhotos, inspectionPhotos, questionPhotos } = extractAuditPhotos(audit);
   const totalPhotos = atmPhotos.length + inspectionPhotos.length + questionPhotos.length;

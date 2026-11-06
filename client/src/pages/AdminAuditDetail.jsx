@@ -6,6 +6,17 @@ import PhotoLightbox from '../components/PhotoLightbox';
 import BomChecklist from '../components/BomChecklist';
 import { printAuditReport, downloadSingleAuditCSV } from '../utils/auditExport';
 
+function countAnsweredStages(audit) {
+  if (!audit || !Array.isArray(audit.stages)) return 0;
+  let count = 0;
+  audit.stages.forEach((st) => {
+    const hasAnswer = (st.questions || []).some((q) => q.answer === 'yes' || q.answer === 'no');
+    const hasPhotos = (st.questions || []).some((q) => q.photos && q.photos.length > 0);
+    if (hasAnswer || hasPhotos) count++;
+  });
+  return count;
+}
+
 export default function AdminAuditDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -183,20 +194,26 @@ export default function AdminAuditDetail() {
           <div>
             <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Status:</span>
             <div>
-              <span
-                style={{
-                  display: 'inline-block',
-                  padding: '3px 8px',
-                  borderRadius: 6,
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  background: audit.isCompleted ? '#dcfce7' : '#fef3c7',
-                  color: audit.isCompleted ? '#15803d' : '#b45309',
-                  border: audit.isCompleted ? '1px solid #bbf7d0' : '1px solid #fde68a',
-                }}
-              >
-                {audit.isCompleted ? '🎉 100% Complete Audit' : `⏳ In Progress (${audit.stages?.length || 0}/3 Stages)`}
-              </span>
+              {(() => {
+                const answeredStages = countAnsweredStages(audit);
+                const isComplete = audit.isCompleted || answeredStages >= 3;
+                return (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      background: isComplete ? '#dcfce7' : '#fef3c7',
+                      color: isComplete ? '#15803d' : '#b45309',
+                      border: isComplete ? '1px solid #bbf7d0' : '1px solid #fde68a',
+                    }}
+                  >
+                    {isComplete ? '🎉 100% Complete Audit' : `⏳ In Progress (${answeredStages}/3 Stages)`}
+                  </span>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -268,21 +285,26 @@ export default function AdminAuditDetail() {
           </div>
         ))}
 
-        {audit.stages?.length < 3 && (
-          <div
-            style={{
-              marginTop: 20,
-              padding: '12px 16px',
-              borderRadius: 8,
-              background: '#f8fafc',
-              border: '1px dashed #cbd5e1',
-              color: '#64748b',
-              fontSize: '0.9rem',
-            }}
-          >
-            ℹ️ <strong>Partial Audit:</strong> Only {audit.stages.length} of 3 stages were submitted for this inspection. Remaining stages were not included.
-          </div>
-        )}
+        {(() => {
+          const answeredStages = countAnsweredStages(audit);
+          const isComplete = audit.isCompleted || answeredStages >= 3;
+          if (isComplete) return null;
+          return (
+            <div
+              style={{
+                marginTop: 20,
+                padding: '12px 16px',
+                borderRadius: 8,
+                background: '#f8fafc',
+                border: '1px dashed #cbd5e1',
+                color: '#64748b',
+                fontSize: '0.9rem',
+              }}
+            >
+              ℹ️ <strong>Partial Audit:</strong> Only {answeredStages} of 3 stages were submitted for this inspection. Remaining stages were not included.
+            </div>
+          );
+        })()}
       </div>
 
       {/* Delete Confirmation Modal */}

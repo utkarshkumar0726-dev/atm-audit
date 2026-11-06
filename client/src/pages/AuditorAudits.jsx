@@ -158,6 +158,15 @@ function hasStageActivity(audit, stageNum) {
   return stats.answered > 0 || hasPhotos;
 }
 
+function countAnsweredStages(audit) {
+  if (!audit || !Array.isArray(audit.stages)) return 0;
+  let count = 0;
+  [1, 2, 3].forEach((num) => {
+    if (hasStageActivity(audit, num)) count++;
+  });
+  return count;
+}
+
 function isAuditComplete(audit) {
   if (audit.isCompleted) return true;
   if (!audit || !Array.isArray(audit.stages) || audit.stages.length < 3) return false;
@@ -1556,14 +1565,14 @@ export default function AuditorAudits() {
                         borderRadius: 6,
                         fontSize: '0.78rem',
                         fontWeight: 700,
-                        background: detailAudit.stages?.length >= 3 ? '#dcfce7' : '#eff6ff',
-                        color: detailAudit.stages?.length >= 3 ? '#15803d' : '#1d4ed8',
-                        border: detailAudit.stages?.length >= 3 ? '1px solid #bbf7d0' : '1px solid #bfdbfe',
+                        background: (detailAudit.isCompleted || countAnsweredStages(detailAudit) >= 3) ? '#dcfce7' : '#eff6ff',
+                        color: (detailAudit.isCompleted || countAnsweredStages(detailAudit) >= 3) ? '#15803d' : '#1d4ed8',
+                        border: (detailAudit.isCompleted || countAnsweredStages(detailAudit) >= 3) ? '1px solid #bbf7d0' : '1px solid #bfdbfe',
                       }}
                     >
-                      {detailAudit.stages?.length >= 3
+                      {(detailAudit.isCompleted || countAnsweredStages(detailAudit) >= 3)
                         ? '✅ Full Audit (3/3 Stages)'
-                        : `📦 Partial Audit (${detailAudit.stages?.length || 0}/3 Stages)`}
+                        : `📦 Partial Audit (${countAnsweredStages(detailAudit)}/3 Stages)`}
                     </span>
                   </div>
                 )}
@@ -1832,7 +1841,7 @@ export default function AuditorAudits() {
                   })}
                 </div>
 
-                {detailAudit.stages?.length < 3 && (
+                {(!detailAudit.isCompleted && countAnsweredStages(detailAudit) < 3) && (
                   <div
                     style={{
                       marginTop: 18,
@@ -1850,7 +1859,7 @@ export default function AuditorAudits() {
                     }}
                   >
                     <span>
-                      ℹ️ <strong>Remaining Stages Pending:</strong> Only {detailAudit.stages?.length || 0} of 3 stages have been submitted for this ATM.
+                      ℹ️ <strong>Remaining Stages Pending:</strong> Only {countAnsweredStages(detailAudit)} of 3 stages have been submitted for this ATM.
                     </span>
                     <button
                       onClick={() => {

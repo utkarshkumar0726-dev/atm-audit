@@ -125,6 +125,54 @@ const POPULAR_LOCALITIES = [
   'Punjabi Bagh',
 ];
 
+function getStageStats(stage) {
+  if (!stage || !Array.isArray(stage.questions)) return { answered: 0, total: 0, isComplete: false };
+  const total = stage.questions.length;
+  const answered = stage.questions.filter((q) => q.answer === 'yes' || q.answer === 'no').length;
+  const isComplete =
+    total > 0 &&
+    stage.questions.every((q) => {
+      if (q.answer === 'yes') return true;
+      if (q.answer === 'no') return Boolean(q.reason?.trim());
+      return false;
+    });
+  return { answered, total, isComplete };
+}
+
+function findStageByNumber(audit, stageNum) {
+  if (!audit || !Array.isArray(audit.stages)) return null;
+  return audit.stages.find((s, idx) => {
+    const combined = `${s.stageName || ''} ${s.stageId || ''}`.toLowerCase();
+    if (stageNum === 1) return idx === 0 || combined.includes('hardware') || combined.includes('stage 1');
+    if (stageNum === 2) return idx === 1 || combined.includes('functional') || combined.includes('stage 2');
+    if (stageNum === 3) return idx === 2 || combined.includes('network') || combined.includes('security') || combined.includes('stage 3');
+    return false;
+  });
+}
+
+function countAnsweredStages(audit) {
+  if (!audit || !Array.isArray(audit.stages)) return 0;
+  let count = 0;
+  [1, 2, 3].forEach((num) => {
+    const st = findStageByNumber(audit, num);
+    if (st && Array.isArray(st.questions)) {
+      const hasAnswer = st.questions.some((q) => q.answer === 'yes' || q.answer === 'no');
+      const hasPhoto = (st.questions || []).some((q) => q.photos && q.photos.length > 0);
+      if (hasAnswer || hasPhoto) count++;
+    }
+  });
+  return count;
+}
+
+function isAuditComplete(audit) {
+  if (audit?.isCompleted) return true;
+  if (!audit || !Array.isArray(audit.stages) || audit.stages.length < 3) return false;
+  return audit.stages.every((st) => {
+    const stats = getStageStats(st);
+    return stats.total > 0 && stats.isComplete;
+  });
+}
+
 export default function AuditorDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -499,30 +547,35 @@ export default function AuditorDashboard() {
             </div>
 
             {/* Status Badge */}
-            {isAudited ? (
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  padding: '3px 8px',
-                  borderRadius: 6,
-                  background: auditObj?.stages?.length >= 3 ? '#dcfce7' : '#eff6ff',
-                  color: auditObj?.stages?.length >= 3 ? '#15803d' : '#1d4ed8',
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {auditObj?.stages?.length >= 3
-                  ? '✓ Complete Audit'
-                  : auditObj?.stages?.length === 2
-                  ? '📋 Stages 1 & 2'
-                  : auditObj?.stages?.length === 1
-                  ? '📦 Stage 1 (Hardware)'
-                  : '✓ Audited'}
-              </span>
-            ) : (
+            {isAudited ? (() => {
+              const answeredStages = countAnsweredStages(auditObj);
+              const isComplete = isAuditComplete(auditObj);
+              const isFullyComplete = isComplete || answeredStages >= 3;
+              return (
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                    background: isFullyComplete ? '#dcfce7' : '#eff6ff',
+                    color: isFullyComplete ? '#15803d' : '#1d4ed8',
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {isFullyComplete
+                    ? '✓ Complete Audit'
+                    : answeredStages === 2
+                    ? '📋 Stages 1 & 2'
+                    : answeredStages === 1
+                    ? '📦 Stage 1 (Hardware)'
+                    : '📋 Partial Audit'}
+                </span>
+              );
+            })() : (
               <span
                 style={{
                   fontSize: '0.75rem',
@@ -564,25 +617,29 @@ export default function AuditorDashboard() {
           )}
 
           {/* Audited timestamp note if audited */}
-          {isAudited && (auditObj?.createdAt || atm.lastAuditedAt) && (
-            <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: 6, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span>Audited on: {new Date(auditObj?.createdAt || atm.lastAuditedAt).toLocaleDateString()}</span>
-              {auditObj?.stages && (
-                <span
-                  style={{
-                    padding: '1px 6px',
-                    borderRadius: 4,
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    background: auditObj.stages.length >= 3 ? '#dcfce7' : '#fef3c7',
-                    color: auditObj.stages.length >= 3 ? '#15803d' : '#b45309',
-                  }}
-                >
-                  {auditObj.stages.length >= 3 ? '✅ 3/3 Stages' : `📦 Stage ${auditObj.stages.length}/3`}
-                </span>
-              )}
-            </div>
-          )}
+          {isAudited && (auditObj?.createdAt || atm.lastAuditedAt) && (() => {
+            const answeredStages = countAnsweredStages(auditObj);
+            const isComplete = isAuditComplete(auditObj) || answeredStages >= 3;
+            return (
+              <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: 6, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span>Audited on: {new Date(auditObj?.createdAt || atm.lastAuditedAt).toLocaleDateString()}</span>
+                {auditObj?.stages && (
+                  <span
+                    style={{
+                      padding: '1px 6px',
+                      borderRadius: 4,
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      background: isComplete ? '#dcfce7' : '#fef3c7',
+                      color: isComplete ? '#15803d' : '#b45309',
+                    }}
+                  >
+                    {isComplete ? '✅ 3/3 Stages' : `📦 ${answeredStages}/3 Stages`}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Card Footer Actions */}
@@ -609,7 +666,7 @@ export default function AuditorDashboard() {
               >
                 👁 View Report
               </button>
-              {auditObj?.stages && auditObj.stages.length < 3 && (
+              {auditObj && !isAuditComplete(auditObj) && countAnsweredStages(auditObj) < 3 && (
                 <button
                   onClick={() => navigate(`/audit/new?atmId=${atm.atmId}&continue=true`)}
                   style={{
@@ -1569,12 +1626,33 @@ export default function AuditorDashboard() {
                 <h2 style={{ margin: 0, fontSize: '1.4rem' }}>
                   Audit Details: {detailAudit?.atmId || 'Loading...'}
                 </h2>
-                {detailAudit && (
-                  <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                    Zone: <strong>{detailAudit.area}</strong> &bull; Submitted:{' '}
-                    {new Date(detailAudit.createdAt).toLocaleString()}
-                  </p>
-                )}
+                {detailAudit && (() => {
+                  const answeredStages = countAnsweredStages(detailAudit);
+                  const isDone = isAuditComplete(detailAudit) || answeredStages >= 3;
+                  return (
+                    <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                        Zone: <strong>{detailAudit.area}</strong> &bull; Submitted:{' '}
+                        {new Date(detailAudit.createdAt).toLocaleString()}
+                      </p>
+                      <span
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: isDone ? '#dcfce7' : '#eff6ff',
+                          color: isDone ? '#15803d' : '#1d4ed8',
+                          border: isDone ? '1px solid #bbf7d0' : '1px solid #bfdbfe',
+                        }}
+                      >
+                        {isDone
+                          ? '✅ Full Audit (3/3 Stages)'
+                          : `📦 Partial Audit (${answeredStages}/3 Stages)`}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 {detailAudit && (
@@ -1839,6 +1917,47 @@ export default function AuditorDashboard() {
                     );
                   })}
                 </div>
+
+                {!isAuditComplete(detailAudit) && countAnsweredStages(detailAudit) < 3 && (
+                  <div
+                    style={{
+                      marginTop: 20,
+                      padding: '14px 18px',
+                      borderRadius: 8,
+                      background: '#f8fafc',
+                      border: '1px dashed #cbd5e1',
+                      color: '#475569',
+                      fontSize: '0.88rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 12,
+                    }}
+                  >
+                    <span>
+                      ℹ️ <strong>Remaining Stages Pending:</strong> Only {countAnsweredStages(detailAudit)} of 3 stages have been submitted for this ATM.
+                    </span>
+                    <button
+                      onClick={() => {
+                        closeAuditDetail();
+                        navigate(`/audit/new?atmId=${detailAudit.atmId}&continue=true`);
+                      }}
+                      style={{
+                        padding: '7px 16px',
+                        fontSize: '0.84rem',
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        background: '#0284c7',
+                        color: '#fff',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ➕ Continue Remaining Stages &rarr;
+                    </button>
+                  </div>
+                )}
 
                 <div style={{ marginTop: 24, textAlign: 'right' }}>
                   <button
