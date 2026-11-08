@@ -18,13 +18,37 @@ function triggerDownload(content, filename, type = 'text/csv;charset=utf-8;') {
   URL.revokeObjectURL(url);
 }
 
-// Download Master Consolidated Audit Report (All 101 Sites) as Multi-Sheet Excel (.xlsx)
-export async function downloadMasterAuditExcel(apiClient) {
-  const dateStr = new Date().toISOString().slice(0, 10);
-  const filename = `PSB_ATM_eSurveillance_Master_Audit_Report_${dateStr}.xlsx`;
+// Download Master / Vendor Consolidated Audit Report as Multi-Sheet Excel (.xlsx)
+export async function downloadMasterAuditExcel(apiClient, options = {}) {
+  const { vendor, auditedOnly } = options;
+  const params = {};
+  if (vendor) params.vendor = vendor;
+  if (auditedOnly !== undefined) params.auditedOnly = auditedOnly;
+
   const response = await apiClient.get('/audits/export-master-excel', {
+    params,
     responseType: 'blob',
   });
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  let filename;
+  if (vendor && auditedOnly) {
+    filename = `PSB_ATM_Audit_Report_${vendor}_Audited_Sites_${dateStr}.xlsx`;
+  } else if (vendor) {
+    filename = `PSB_ATM_Audit_Report_${vendor}_Master_${dateStr}.xlsx`;
+  } else if (auditedOnly) {
+    filename = `PSB_ATM_Audit_Report_All_Audited_Sites_${dateStr}.xlsx`;
+  } else {
+    filename = `PSB_ATM_eSurveillance_Master_Audit_Report_${dateStr}.xlsx`;
+  }
+
+  // Also check if content-disposition header provided a filename
+  const disposition = response.headers?.['content-disposition'];
+  if (disposition && disposition.includes('filename=')) {
+    const match = disposition.match(/filename="?([^";]+)"?/);
+    if (match && match[1]) filename = match[1];
+  }
+
   triggerDownload(response.data, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   return filename;
 }

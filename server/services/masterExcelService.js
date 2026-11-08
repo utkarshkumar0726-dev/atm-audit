@@ -16,13 +16,49 @@ function cleanCell(val) {
 
 /**
  * Generate Master Audit Excel Buffer
+ * @param {Object} options
+ * @param {string} [options.vendor] - Filter by vendor name e.g. 'CMS' or 'Provigil'
+ * @param {boolean} [options.auditedOnly] - If true, only include sites that have been audited
  */
-async function generateMasterAuditExcelBuffer() {
-  // 1. Fetch all ATMs sorted by Vendor and Serial No
-  const atms = await Atm.find().populate('area', 'name').sort({ vendor: 1, slNo: 1 }).lean();
+async function generateMasterAuditExcelBuffer(options = {}) {
+  const { vendor, auditedOnly = false } = options;
 
-  // 2. Fetch all Audits with populated auditor
-  const audits = await Audit.find().populate('auditor', 'name username email').lean();
+  // 1. Fetch ATMs sorted by Vendor and Serial No
+  let atmsQuery = {};
+  if (vendor) {
+    atmsQuery.vendor = { $regex: new RegExp(`^${vendor.trim()}$`, 'i') };
+  }
+  let atms = await Atm.find(atmsQuery).populate('area', 'name').sort({ vendor: 1, slNo: 1 }).lean();
+
+  // 2. Fetch all Audits with populated auditor (using fast projection to skip heavy raw photos)
+  const audits = await Audit.aggregate([
+    {
+      $project: {
+        atmId: 1,
+        isCompleted: 1,
+        completedAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        auditor: 1,
+        stages: 1,
+        inspectionPhotosCount: { $size: { $ifNull: ['$photos', []] } },
+      },
+    },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'auditor',
+        foreignField: '_id',
+        as: 'auditor',
+      },
+    },
+    {
+      $unwind: {
+        path: '$auditor',
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+  ]);
 
   // Map latest / best audit per ATM ID (case-insensitive)
   const auditMap = new Map();
@@ -42,6 +78,14 @@ async function generateMasterAuditExcelBuffer() {
     }
   }
 
+  // Filter audited sites only if requested
+  if (auditedOnly) {
+    atms = atms.filter((atm) => {
+      const key = (atm.atmId || '').trim().toUpperCase();
+      return auditMap.has(key);
+    });
+  }
+
   // 3. Fetch canonical stages and checklist questions
   const stages = await Stage.find().sort({ order: 1 }).lean();
   const canonicalQuestions = [];
@@ -58,6 +102,12 @@ async function generateMasterAuditExcelBuffer() {
     });
   }
 
+  // Count audited & pending in current scope
+  const inScopeAuditedCount = atms.filter((atm) => auditMap.has((atm.atmId || '').trim().toUpperCase())).length;
+  const inScopePendingCount = atms.length - inScopeAuditedCount;
+  const vendorTitle = vendor ? `${vendor.toUpperCase()} SITES` : 'ALL SITES';
+  const scopeTitle = auditedOnly ? 'CONDUCTED AUDITS REPORT' : 'MASTER AUDIT REGISTER & OBSERVATIONS';
+
   // ==========================================
   // SHEET 1: Master Sites Audit Register & Observations
   // ==========================================
@@ -65,15 +115,15 @@ async function generateMasterAuditExcelBuffer() {
 
   // Title Block
   registerRows.push(['PUNJAB & SIND BANK - INTEGRATED e-SURVEILLANCE AUDIT']);
-  registerRows.push(['MASTER SITE AUDIT REGISTER & COMPREHENSIVE OBSERVATIONS REPORT']);
+  registerRows.push([`${vendorTitle} - ${scopeTitle}`]);
   registerRows.push([
     `Report Generated: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`,
     '',
-    `Total Site Scope: ${atms.length} ATMs`,
+    `Total Scope in Report: ${atms.length} ATMs`,
     '',
-    `Audited Sites: ${auditMap.size} ATMs`,
+    `Audited Sites: ${inScopeAuditedCount} ATMs`,
     '',
-    `Pending Sites: ${atms.length - auditMap.size} ATMs`,
+    `Pending Sites: ${inScopePendingCount} ATMs`,
   ]);
   registerRows.push([]); // blank separator
 
@@ -256,7 +306,7 @@ async function generateMasterAuditExcelBuffer() {
 
       // Photos Count
       const atmPhotos = Array.isArray(audit.atm?.links) ? audit.atm.links.length : (audit.atm?.link ? 1 : 0);
-      const inspectionPhotos = Array.isArray(audit.photos) ? audit.photos.length : 0;
+      const inspectionPhotos = audit.inspectionPhotosCount ?? (Array.isArray(audit.photos) ? audit.photos.length : 0);
       let questionPhotos = 0;
       auditStages.forEach((st) => {
         (st.questions || []).forEach((q) => {
@@ -483,31 +533,32 @@ async function generateMasterAuditExcelBuffer() {
   // ==========================================
   const summaryRows = [];
   summaryRows.push(['PUNJAB & SIND BANK - e-SURVEILLANCE AUDIT EXECUTIVE SUMMARY']);
-  summaryRows.push([`Audit Scope: 101 ATMs/CRMs | Lead Auditor: INFOCUS-IT (CERT-In Empanelled)`]);
+  summaryRows.push([`Audit Scope: ${vendor ? `${vendor.toUpperCase()} (${atms.length} Sites)` : `${atms.length} ATMs/CRMs`} | Report Scope: ${auditedOnly ? 'Audited Sites Only' : 'Master Sites Scope'} | Lead Auditor: INFOCUS-IT (CERT-In Empanelled)`]);
   summaryRows.push([]);
 
+  const totalScope = stats.totalSites || 1;
   summaryRows.push(['1. HIGH LEVEL AUDIT PROGRESS METRICS']);
   summaryRows.push(['Metric Description', 'Count / Value', 'Percentage of Total Scope']);
   summaryRows.push(['Total ATMs in Scope', stats.totalSites, '100%']);
   summaryRows.push([
     'Total Audits Conducted (Completed + In Progress)',
     stats.auditedSites,
-    `${Math.round((stats.auditedSites / stats.totalSites) * 100)}%`,
+    `${Math.round((stats.auditedSites / totalScope) * 100)}%`,
   ]);
   summaryRows.push([
     'Audits 100% Completed (All 3 Stages)',
     stats.completedSites,
-    `${Math.round((stats.completedSites / stats.totalSites) * 100)}%`,
+    `${Math.round((stats.completedSites / totalScope) * 100)}%`,
   ]);
   summaryRows.push([
     'Audits In Progress',
     stats.inProgressSites,
-    `${Math.round((stats.inProgressSites / stats.totalSites) * 100)}%`,
+    `${Math.round((stats.inProgressSites / totalScope) * 100)}%`,
   ]);
   summaryRows.push([
     'Audits Pending (Not Started)',
     stats.pendingSites,
-    `${Math.round((stats.pendingSites / stats.totalSites) * 100)}%`,
+    `${Math.round((stats.pendingSites / totalScope) * 100)}%`,
   ]);
   summaryRows.push([]);
 

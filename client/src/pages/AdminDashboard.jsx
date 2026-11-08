@@ -95,25 +95,30 @@ export default function AdminDashboard() {
     }
   }
 
-  const [exportingMasterExcel, setExportingMasterExcel] = useState(false);
+  const [exportingReport, setExportingReport] = useState(null); // null | 'master' | 'cms' | 'provigil' | 'audited'
 
-  async function handleDownloadMasterExcel() {
-    setExportingMasterExcel(true);
+  async function handleDownloadExcel(options = {}, reportKey = 'master') {
+    setExportingReport(reportKey);
     setFeedback(null);
     try {
-      const fname = await downloadMasterAuditExcel(api);
+      const fname = await downloadMasterAuditExcel(api, options);
+      const title = options.vendor
+        ? `${options.vendor} ${options.auditedOnly ? 'Audited Sites' : 'Master'}`
+        : options.auditedOnly
+        ? 'All Audited Sites'
+        : 'Master Consolidated (All 101 Sites)';
       setFeedback({
         type: 'success',
-        message: `Master Consolidated Excel Report (${fname}) downloaded successfully! Contains all 101 sites, full observations, checkpoints matrix, and BOM breakdown.`,
+        message: `${title} Excel Report (${fname}) downloaded successfully!`,
       });
     } catch (err) {
-      console.error('Failed to download master Excel:', err);
+      console.error('Failed to download Excel report:', err);
       setFeedback({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Failed to download master Excel report',
+        message: err.response?.data?.message || err.message || 'Failed to download Excel report',
       });
     } finally {
-      setExportingMasterExcel(false);
+      setExportingReport(null);
     }
   }
 
@@ -210,34 +215,88 @@ export default function AdminDashboard() {
               Track audits across Stage 1, Stage 2, Stage 3, and 100% Complete Audits.
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={handleDownloadMasterExcel}
-              disabled={exportingMasterExcel}
+              onClick={() => handleDownloadExcel({ vendor: 'CMS', auditedOnly: true }, 'cms')}
+              disabled={Boolean(exportingReport)}
               style={{
-                padding: '8px 18px',
+                padding: '8px 14px',
                 borderRadius: 8,
-                background: exportingMasterExcel
+                background: exportingReport === 'cms'
+                  ? '#94a3b8'
+                  : 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 2px 4px rgba(217, 119, 6, 0.25)',
+                fontWeight: 700,
+                fontSize: '0.84rem',
+                cursor: exportingReport ? 'wait' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.2s',
+              }}
+              title="Download separate Excel report for CMS audited sites"
+            >
+              <span>🏢</span>
+              {exportingReport === 'cms' ? 'Generating CMS...' : 'CMS Audited Report'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDownloadExcel({ vendor: 'Provigil', auditedOnly: true }, 'provigil')}
+              disabled={Boolean(exportingReport)}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 8,
+                background: exportingReport === 'provigil'
+                  ? '#94a3b8'
+                  : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 2px 4px rgba(37, 99, 235, 0.25)',
+                fontWeight: 700,
+                fontSize: '0.84rem',
+                cursor: exportingReport ? 'wait' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.2s',
+              }}
+              title="Download separate Excel report for Provigil audited sites"
+            >
+              <span>🛡️</span>
+              {exportingReport === 'provigil' ? 'Generating Provigil...' : 'Provigil Audited Report'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDownloadExcel({}, 'master')}
+              disabled={Boolean(exportingReport)}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 8,
+                background: exportingReport === 'master'
                   ? '#94a3b8'
                   : 'linear-gradient(135deg, #15803d 0%, #166534 100%)',
                 color: '#ffffff',
                 border: 'none',
                 boxShadow: '0 2px 4px rgba(21, 128, 61, 0.25)',
                 fontWeight: 700,
-                fontSize: '0.88rem',
-                cursor: exportingMasterExcel ? 'wait' : 'pointer',
+                fontSize: '0.84rem',
+                cursor: exportingReport ? 'wait' : 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 6,
                 transition: 'all 0.2s',
               }}
               title="Download consolidated Excel report with all 101 sites observations, checkpoint matrix and BOM breakdown"
             >
-              <span style={{ fontSize: '1.1rem' }}>📑</span>
-              {exportingMasterExcel
-                ? 'Generating Master Excel...'
-                : 'Download Master Excel (All 101 Sites Observations)'}
+              <span>📑</span>
+              {exportingReport === 'master'
+                ? 'Generating Master...'
+                : 'Master Excel (All 101)'}
             </button>
 
             <span
@@ -547,21 +606,69 @@ export default function AdminDashboard() {
             }}
           />
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={handleDownloadMasterExcel}
-              disabled={exportingMasterExcel}
+              onClick={() => handleDownloadExcel({ vendor: 'CMS', auditedOnly: true }, 'cms')}
+              disabled={Boolean(exportingReport)}
+              title="Download separate Excel report for CMS audited sites"
+              style={{
+                padding: '9px 14px',
+                borderRadius: 8,
+                background: exportingReport === 'cms' ? '#94a3b8' : '#d97706',
+                color: '#ffffff',
+                border: '1px solid #b45309',
+                fontWeight: 700,
+                fontSize: '0.84rem',
+                cursor: exportingReport ? 'wait' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              }}
+            >
+              <span>🏢</span>
+              {exportingReport === 'cms' ? 'Generating CMS...' : 'CMS Audited'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDownloadExcel({ vendor: 'Provigil', auditedOnly: true }, 'provigil')}
+              disabled={Boolean(exportingReport)}
+              title="Download separate Excel report for Provigil audited sites"
+              style={{
+                padding: '9px 14px',
+                borderRadius: 8,
+                background: exportingReport === 'provigil' ? '#94a3b8' : '#2563eb',
+                color: '#ffffff',
+                border: '1px solid #1d4ed8',
+                fontWeight: 700,
+                fontSize: '0.84rem',
+                cursor: exportingReport ? 'wait' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              }}
+            >
+              <span>🛡️</span>
+              {exportingReport === 'provigil' ? 'Generating Provigil...' : 'Provigil Audited'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDownloadExcel({}, 'master')}
+              disabled={Boolean(exportingReport)}
               title="Download complete Master Observation Sheet for all 101 sites in Excel (.xlsx)"
               style={{
-                padding: '9px 16px',
+                padding: '9px 14px',
                 borderRadius: 8,
-                background: exportingMasterExcel ? '#94a3b8' : '#15803d',
+                background: exportingReport === 'master' ? '#94a3b8' : '#15803d',
                 color: '#ffffff',
                 border: '1px solid #166534',
                 fontWeight: 700,
-                fontSize: '0.85rem',
-                cursor: exportingMasterExcel ? 'wait' : 'pointer',
+                fontSize: '0.84rem',
+                cursor: exportingReport ? 'wait' : 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
@@ -569,7 +676,7 @@ export default function AdminDashboard() {
               }}
             >
               <span>📑</span>
-              {exportingMasterExcel ? 'Generating Master Excel...' : 'Master Excel (All 101 Sites)'}
+              {exportingReport === 'master' ? 'Generating Master...' : 'Master (All 101)'}
             </button>
 
             <button

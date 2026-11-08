@@ -495,12 +495,26 @@ router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
   }
 });
 
-// GET /api/audits/export-master-excel - Admin downloads consolidated master Excel report for all 101 sites
-router.get('/export-master-excel', requireAuth, requireRole('admin'), async (req, res) => {
+// GET /api/audits/export-master-excel - Download consolidated master Excel report (optionally filtered by vendor and/or auditedOnly)
+router.get('/export-master-excel', requireAuth, async (req, res) => {
   try {
-    const excelBuffer = await generateMasterAuditExcelBuffer();
+    const { vendor, auditedOnly } = req.query;
+    const isAuditedOnly = auditedOnly === 'true' || auditedOnly === true;
+    const excelBuffer = await generateMasterAuditExcelBuffer({
+      vendor: vendor ? String(vendor).trim() : undefined,
+      auditedOnly: isAuditedOnly,
+    });
     const dateStamp = new Date().toISOString().slice(0, 10);
-    const filename = `PSB_ATM_eSurveillance_Master_Audit_Report_${dateStamp}.xlsx`;
+    let filename;
+    if (vendor && isAuditedOnly) {
+      filename = `PSB_ATM_Audit_Report_${vendor.trim()}_Audited_Sites_${dateStamp}.xlsx`;
+    } else if (vendor) {
+      filename = `PSB_ATM_Audit_Report_${vendor.trim()}_Master_${dateStamp}.xlsx`;
+    } else if (isAuditedOnly) {
+      filename = `PSB_ATM_Audit_Report_All_Audited_Sites_${dateStamp}.xlsx`;
+    } else {
+      filename = `PSB_ATM_eSurveillance_Master_Audit_Report_${dateStamp}.xlsx`;
+    }
 
     res.setHeader(
       'Content-Type',

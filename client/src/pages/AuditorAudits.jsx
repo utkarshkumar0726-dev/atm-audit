@@ -6,7 +6,7 @@ import Topbar from '../components/Topbar';
 import AuditorNav from '../components/AuditorNav';
 import PhotoLightbox from '../components/PhotoLightbox';
 import BomChecklist from '../components/BomChecklist';
-import { printAuditReport, downloadSingleAuditCSV, downloadAuditsSummaryCSV } from '../utils/auditExport';
+import { printAuditReport, downloadSingleAuditCSV, downloadAuditsSummaryCSV, downloadMasterAuditExcel } from '../utils/auditExport';
 
 // Normalization function to handle spelling variants common in Delhi / Indian addresses
 function normalizeLocalityQuery(str) {
@@ -194,6 +194,19 @@ export default function AuditorAudits() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState('');
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const [exportingReport, setExportingReport] = useState(null);
+
+  async function handleDownloadExcel(options = {}, reportKey = 'master') {
+    setExportingReport(reportKey);
+    try {
+      await downloadMasterAuditExcel(api, options);
+    } catch (err) {
+      console.error('Failed to download Excel report:', err);
+      alert(err.response?.data?.message || err.message || 'Failed to download report');
+    } finally {
+      setExportingReport(null);
+    }
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -1038,27 +1051,96 @@ export default function AuditorAudits() {
             }}
           />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleDownloadExcel({ vendor: 'CMS', auditedOnly: true }, 'cms')}
+              disabled={Boolean(exportingReport)}
+              title="Download separate Excel report for CMS audited sites"
+              style={{
+                padding: '8px 12px',
+                borderRadius: 8,
+                background: exportingReport === 'cms' ? '#94a3b8' : '#d97706',
+                color: '#ffffff',
+                border: '1px solid #b45309',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: exportingReport ? 'wait' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+              }}
+            >
+              <span>🏢</span>
+              {exportingReport === 'cms' ? 'Generating CMS...' : 'CMS Audited Excel'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDownloadExcel({ vendor: 'Provigil', auditedOnly: true }, 'provigil')}
+              disabled={Boolean(exportingReport)}
+              title="Download separate Excel report for Provigil audited sites"
+              style={{
+                padding: '8px 12px',
+                borderRadius: 8,
+                background: exportingReport === 'provigil' ? '#94a3b8' : '#2563eb',
+                color: '#ffffff',
+                border: '1px solid #1d4ed8',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: exportingReport ? 'wait' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+              }}
+            >
+              <span>🛡️</span>
+              {exportingReport === 'provigil' ? 'Generating Provigil...' : 'Provigil Audited Excel'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDownloadExcel({}, 'master')}
+              disabled={Boolean(exportingReport)}
+              title="Download consolidated Excel report with all 101 sites observations and matrix"
+              style={{
+                padding: '8px 12px',
+                borderRadius: 8,
+                background: exportingReport === 'master' ? '#94a3b8' : '#15803d',
+                color: '#ffffff',
+                border: '1px solid #166534',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: exportingReport ? 'wait' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+              }}
+            >
+              <span>📑</span>
+              {exportingReport === 'master' ? 'Generating Master...' : 'Master (All 101)'}
+            </button>
+
             <button
               type="button"
               onClick={() => downloadAuditsSummaryCSV(displayedAudits, `My_Audits_${activeSubmodule}`)}
               disabled={displayedAudits.length === 0}
               title="Download your audits summary as CSV spreadsheet"
               style={{
-                padding: '8px 14px',
+                padding: '8px 12px',
                 borderRadius: 8,
                 background: '#f0fdf4',
                 color: '#15803d',
                 border: '1px solid #bbf7d0',
                 fontWeight: 600,
-                fontSize: '0.84rem',
+                fontSize: '0.82rem',
                 cursor: displayedAudits.length === 0 ? 'not-allowed' : 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
+                gap: 5,
               }}
             >
-              📥 Export Audits CSV
+              📥 CSV
             </button>
             {uniqueZones.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
