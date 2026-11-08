@@ -18,7 +18,7 @@ export default function Login() {
       const user = await login(username, password);
       navigate(user.role === 'admin' ? '/admin' : '/auditor');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.message || err.message || 'Login failed. Please check your network connection.');
     } finally {
       setSubmitting(false);
     }
@@ -49,8 +49,14 @@ export default function Login() {
         </div>
         {error && <p className="error">{error}</p>}
         <label>
-          Username
-          <input value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
+          Username / Email / Mobile
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="admin / jitender / mobile..."
+            required
+            autoFocus
+          />
         </label>
         <label>
           Password
@@ -58,6 +64,7 @@ export default function Login() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
             required
           />
         </label>

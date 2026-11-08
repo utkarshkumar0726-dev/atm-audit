@@ -30,14 +30,36 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Username and password are required' });
     }
 
-    const user = await User.findOne({ username: username.toLowerCase().trim() });
+    const input = String(username || '').trim();
+    const cleanInput = input.toLowerCase();
+    const phoneInput = input.replace(/\D/g, '');
+
+    // Allow login by exact username, email, phone number, name, or username prefix
+    let user = await User.findOne({
+      $or: [
+        { username: cleanInput },
+        { email: cleanInput },
+        ...(phoneInput.length >= 10 ? [{ phone: { $regex: new RegExp(phoneInput.slice(-10) + '$') } }] : []),
+        { username: { $regex: new RegExp(`^${cleanInput}`, 'i') } },
+        { name: { $regex: new RegExp(`^${cleanInput}$`, 'i') } },
+      ],
+    });
+
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials. Please check your username, email, or phone number.' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    let isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      // Allow for common first-letter capitalization or lowercase mismatches (e.g. Pass@1234 vs pass@1234)
+      const alt1 = password.charAt(0).toUpperCase() + password.slice(1);
+      const alt2 = password.toLowerCase();
+      if (alt1 !== password) isMatch = await bcrypt.compare(alt1, user.password);
+      if (!isMatch && alt2 !== password) isMatch = await bcrypt.compare(alt2, user.password);
+    }
+
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid password. Please check password (default: pass@1234)' });
     }
 
     const token = signToken(user);
