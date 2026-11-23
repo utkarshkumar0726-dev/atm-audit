@@ -153,7 +153,7 @@ function findStageByNumber(audit, stageNum) {
 function countAnsweredStages(audit) {
   if (!audit || !Array.isArray(audit.stages)) return 0;
   let count = 0;
-  [1, 2, 3].forEach((num) => {
+  [1, 2].forEach((num) => {
     const st = findStageByNumber(audit, num);
     if (st && Array.isArray(st.questions)) {
       const hasAnswer = st.questions.some((q) => q.answer === 'yes' || q.answer === 'no');
@@ -166,8 +166,9 @@ function countAnsweredStages(audit) {
 
 function isAuditComplete(audit) {
   if (audit?.isCompleted) return true;
-  if (!audit || !Array.isArray(audit.stages) || audit.stages.length < 3) return false;
-  return audit.stages.every((st) => {
+  if (!audit || !Array.isArray(audit.stages) || audit.stages.length < 2) return false;
+  const activeStages = audit.stages.slice(0, 2);
+  return activeStages.every((st) => {
     const stats = getStageStats(st);
     return stats.total > 0 && stats.isComplete;
   });
@@ -550,7 +551,7 @@ export default function AuditorDashboard() {
             {isAudited ? (() => {
               const answeredStages = countAnsweredStages(auditObj);
               const isComplete = isAuditComplete(auditObj);
-              const isFullyComplete = isComplete || answeredStages >= 3;
+              const isFullyComplete = isComplete || answeredStages >= 2;
               return (
                 <span
                   style={{
@@ -619,7 +620,7 @@ export default function AuditorDashboard() {
           {/* Audited timestamp note if audited */}
           {isAudited && (auditObj?.createdAt || atm.lastAuditedAt) && (() => {
             const answeredStages = countAnsweredStages(auditObj);
-            const isComplete = isAuditComplete(auditObj) || answeredStages >= 3;
+            const isComplete = isAuditComplete(auditObj) || answeredStages >= 2;
             return (
               <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: 6, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <span>Audited on: {new Date(auditObj?.createdAt || atm.lastAuditedAt).toLocaleDateString()}</span>
@@ -634,7 +635,7 @@ export default function AuditorDashboard() {
                       color: isComplete ? '#15803d' : '#b45309',
                     }}
                   >
-                    {isComplete ? '✅ 3/3 Stages' : `📦 ${answeredStages}/3 Stages`}
+                    {isComplete ? '✅ 2/2 Stages' : `📦 ${answeredStages}/2 Stages`}
                   </span>
                 )}
               </div>
@@ -666,7 +667,7 @@ export default function AuditorDashboard() {
               >
                 👁 View Report
               </button>
-              {auditObj && !isAuditComplete(auditObj) && countAnsweredStages(auditObj) < 3 && (
+              {auditObj && !isAuditComplete(auditObj) && countAnsweredStages(auditObj) < 2 && (
                 <button
                   onClick={() => navigate(`/audit/new?atmId=${atm.atmId}&continue=true`)}
                   style={{
@@ -1628,7 +1629,7 @@ export default function AuditorDashboard() {
                 </h2>
                 {detailAudit && (() => {
                   const answeredStages = countAnsweredStages(detailAudit);
-                  const isDone = isAuditComplete(detailAudit) || answeredStages >= 3;
+                  const isDone = isAuditComplete(detailAudit) || answeredStages >= 2;
                   return (
                     <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
@@ -1647,8 +1648,8 @@ export default function AuditorDashboard() {
                         }}
                       >
                         {isDone
-                          ? '✅ Full Audit (3/3 Stages)'
-                          : `📦 Partial Audit (${answeredStages}/3 Stages)`}
+                          ? '✅ Full Audit (2/2 Stages)'
+                          : `📦 Partial Audit (${answeredStages}/2 Stages)`}
                       </span>
                     </div>
                   );
@@ -1811,7 +1812,7 @@ export default function AuditorDashboard() {
                 {/* Stages & Checklist Responses */}
                 <h3 style={{ fontSize: '1.05rem', margin: '0 0 12px' }}>Checklist Inspection Results</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {detailAudit.stages?.map((stage, sIdx) => {
+                  {detailAudit.stages?.slice(0, 2).map((stage, sIdx) => {
                     const questions = stage.questions || stage.responses || [];
                     return (
                       <div
@@ -1918,7 +1919,7 @@ export default function AuditorDashboard() {
                   })}
                 </div>
 
-                {!isAuditComplete(detailAudit) && countAnsweredStages(detailAudit) < 3 && (
+                {!isAuditComplete(detailAudit) && countAnsweredStages(detailAudit) < 2 && (
                   <div
                     style={{
                       marginTop: 20,
@@ -1936,7 +1937,7 @@ export default function AuditorDashboard() {
                     }}
                   >
                     <span>
-                      ℹ️ <strong>Remaining Stages Pending:</strong> Only {countAnsweredStages(detailAudit)} of 3 stages have been submitted for this ATM.
+                      ℹ️ <strong>Remaining Stages Pending:</strong> Only {countAnsweredStages(detailAudit)} of 2 stages have been submitted for this ATM.
                     </span>
                     <button
                       onClick={() => {

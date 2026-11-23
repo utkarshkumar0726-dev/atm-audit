@@ -9,7 +9,7 @@ import { printAuditReport, downloadSingleAuditCSV } from '../utils/auditExport';
 function countAnsweredStages(audit) {
   if (!audit || !Array.isArray(audit.stages)) return 0;
   let count = 0;
-  audit.stages.forEach((st) => {
+  audit.stages.slice(0, 2).forEach((st) => {
     const hasAnswer = (st.questions || []).some((q) => q.answer === 'yes' || q.answer === 'no');
     const hasPhotos = (st.questions || []).some((q) => q.photos && q.photos.length > 0);
     if (hasAnswer || hasPhotos) count++;
@@ -196,7 +196,7 @@ export default function AdminAuditDetail() {
             <div>
               {(() => {
                 const answeredStages = countAnsweredStages(audit);
-                const isComplete = audit.isCompleted || answeredStages >= 3;
+                const isComplete = audit.isCompleted || answeredStages >= 2;
                 return (
                   <span
                     style={{
@@ -210,7 +210,7 @@ export default function AdminAuditDetail() {
                       border: isComplete ? '1px solid #bbf7d0' : '1px solid #fde68a',
                     }}
                   >
-                    {isComplete ? '🎉 100% Complete Audit' : `⏳ In Progress (${answeredStages}/3 Stages)`}
+                    {isComplete ? '🎉 100% Complete Audit' : `⏳ In Progress (${answeredStages}/2 Stages)`}
                   </span>
                 );
               })()}
@@ -256,7 +256,7 @@ export default function AdminAuditDetail() {
           </div>
         )}
 
-        {audit.stages.map((stage) => (
+        {audit.stages.slice(0, 2).map((stage) => (
           <div key={stage.stageId} className="stage-block">
             <h2>{stage.stageName}</h2>
             {stage.questions.map((q) => (
@@ -287,7 +287,7 @@ export default function AdminAuditDetail() {
 
         {(() => {
           const answeredStages = countAnsweredStages(audit);
-          const isComplete = audit.isCompleted || answeredStages >= 3;
+          const isComplete = audit.isCompleted || answeredStages >= 2;
           if (isComplete) return null;
           return (
             <div
@@ -301,7 +301,7 @@ export default function AdminAuditDetail() {
                 fontSize: '0.9rem',
               }}
             >
-              ℹ️ <strong>Partial Audit:</strong> Only {answeredStages} of 3 stages were submitted for this inspection. Remaining stages were not included.
+              ℹ️ <strong>Partial Audit:</strong> Only {answeredStages} of 2 stages were submitted for this inspection. Remaining stages were not included.
             </div>
           );
         })()}

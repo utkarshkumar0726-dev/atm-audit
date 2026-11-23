@@ -214,11 +214,12 @@ router.post('/', requireAuth, requireRole('auditor', 'admin'), async (req, res) 
     }
 
     // Check completion criteria:
-    // Requires all 3 stages present and every question answered
-    const hasAll3Stages = (audit.stages || []).length >= 3;
+    // Requires active stages (Stages 1 & 2) present and every question answered
+    const activeStages = (audit.stages || []).slice(0, 2);
+    const hasActiveStages = activeStages.length >= 2;
     const allQuestionsAnswered =
-      hasAll3Stages &&
-      audit.stages.every((st) => {
+      hasActiveStages &&
+      activeStages.every((st) => {
         return (
           Array.isArray(st.questions) &&
           st.questions.length > 0 &&
@@ -236,6 +237,11 @@ router.post('/', requireAuth, requireRole('auditor', 'admin'), async (req, res) 
       audit.status = 'completed';
     } else if (audit.isCompleted && allQuestionsAnswered) {
       // Retain completed status if already complete and still valid
+      audit.status = 'completed';
+    } else if (allQuestionsAnswered) {
+      // Both active stages are fully completed
+      audit.isCompleted = true;
+      audit.completedAt = audit.completedAt || new Date();
       audit.status = 'completed';
     } else {
       audit.isCompleted = false;

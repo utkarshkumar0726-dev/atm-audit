@@ -5,9 +5,10 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 const router = express.Router();
 
 // GET /api/checklist - nested stages + questions, in order (any authenticated user)
+// Currently filtering order: { $lt: 2 } to serve Stage 1 & Stage 2 (Stage 3 temporarily disabled)
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const stages = await Stage.find().sort({ order: 1 });
+    const stages = await Stage.find({ order: { $lt: 2 } }).sort({ order: 1 });
     const questions = await ChecklistQuestion.find().sort({ order: 1 });
 
     const result = stages.map((stage) => {

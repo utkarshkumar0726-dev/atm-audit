@@ -161,7 +161,7 @@ function hasStageActivity(audit, stageNum) {
 function countAnsweredStages(audit) {
   if (!audit || !Array.isArray(audit.stages)) return 0;
   let count = 0;
-  [1, 2, 3].forEach((num) => {
+  [1, 2].forEach((num) => {
     if (hasStageActivity(audit, num)) count++;
   });
   return count;
@@ -169,8 +169,9 @@ function countAnsweredStages(audit) {
 
 function isAuditComplete(audit) {
   if (audit.isCompleted) return true;
-  if (!audit || !Array.isArray(audit.stages) || audit.stages.length < 3) return false;
-  return audit.stages.every((st) => {
+  if (!audit || !Array.isArray(audit.stages) || audit.stages.length < 2) return false;
+  const activeStages = audit.stages.slice(0, 2);
+  return activeStages.every((st) => {
     const stats = getStageStats(st);
     return stats.total > 0 && stats.isComplete;
   });
@@ -356,13 +357,11 @@ export default function AuditorAudits() {
   const submoduleCounts = useMemo(() => {
     const stage1 = audits.filter((a) => hasStageActivity(a, 1)).length;
     const stage2 = audits.filter((a) => hasStageActivity(a, 2)).length;
-    const stage3 = audits.filter((a) => hasStageActivity(a, 3)).length;
     const completed = audits.filter((a) => isAuditComplete(a)).length;
     return {
       all: audits.length,
       stage1,
       stage2,
-      stage3,
       completed,
     };
   }, [audits]);
@@ -374,8 +373,6 @@ export default function AuditorAudits() {
       list = list.filter((a) => hasStageActivity(a, 1));
     } else if (activeSubmodule === 'stage2') {
       list = list.filter((a) => hasStageActivity(a, 2));
-    } else if (activeSubmodule === 'stage3') {
-      list = list.filter((a) => hasStageActivity(a, 3));
     } else if (activeSubmodule === 'completed') {
       list = list.filter((a) => isAuditComplete(a));
     }
@@ -418,7 +415,6 @@ export default function AuditorAudits() {
               <th>Area / Zone</th>
               <th>📦 Stage 1 (Hardware)</th>
               <th>🔄 Stage 2 (Functional)</th>
-              <th>⚡ Stage 3 (Security)</th>
               <th>Audit Status</th>
               <th>Photos</th>
               <th>Date</th>
@@ -538,29 +534,6 @@ export default function AuditorAudits() {
                         }}
                       >
                         {s2Stats.isComplete ? '✅' : '⏳'} {s2Stats.answered}/{s2Stats.total}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Pending</span>
-                    )}
-                  </td>
-                  {/* Stage 3 */}
-                  <td>
-                    {s3Stats.total > 0 ? (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '3px 8px',
-                          borderRadius: 6,
-                          fontSize: '0.78rem',
-                          fontWeight: 700,
-                          background: s3Stats.isComplete ? '#dcfce7' : s3Stats.answered > 0 ? '#eff6ff' : '#f1f5f9',
-                          color: s3Stats.isComplete ? '#15803d' : s3Stats.answered > 0 ? '#1d4ed8' : '#64748b',
-                          border: s3Stats.isComplete ? '1px solid #bbf7d0' : s3Stats.answered > 0 ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
-                        }}
-                      >
-                        {s3Stats.isComplete ? '✅' : '⏳'} {s3Stats.answered}/{s3Stats.total}
                       </span>
                     ) : (
                       <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Pending</span>
@@ -799,29 +772,6 @@ export default function AuditorAudits() {
           </div>
 
           {/* Stage 3 */}
-          <div
-            onClick={() => setActiveSubmodule('stage3')}
-            style={{
-              padding: '14px 18px',
-              borderRadius: 12,
-              background: activeSubmodule === 'stage3' ? '#7c3aed' : '#f5f3ff',
-              color: activeSubmodule === 'stage3' ? '#ffffff' : '#5b21b6',
-              border: activeSubmodule === 'stage3' ? '2px solid #6d28d9' : '1px solid #ddd6fe',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: activeSubmodule === 'stage3' ? '#ede9fe' : '#7c3aed' }}>
-              ⚡ Stage 3: Security
-            </div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: 4 }}>
-              {submoduleCounts.stage3}
-            </div>
-            <div style={{ fontSize: '0.72rem', color: activeSubmodule === 'stage3' ? '#ede9fe' : '#8b5cf6', marginTop: 2 }}>
-              Network & cyber audit
-            </div>
-          </div>
-
           {/* Complete Audit */}
           <div
             onClick={() => setActiveSubmodule('completed')}
@@ -842,7 +792,7 @@ export default function AuditorAudits() {
               {submoduleCounts.completed}
             </div>
             <div style={{ fontSize: '0.72rem', color: activeSubmodule === 'completed' ? '#dcfce7' : '#22c55e', marginTop: 2 }}>
-              All 3 stages 100% done
+              Both stages 100% done
             </div>
           </div>
         </div>
@@ -960,39 +910,6 @@ export default function AuditorAudits() {
 
           <button
             type="button"
-            onClick={() => setActiveSubmodule('stage3')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 8,
-              fontSize: '0.86rem',
-              fontWeight: activeSubmodule === 'stage3' ? 700 : 500,
-              background: activeSubmodule === 'stage3' ? '#7c3aed' : '#f5f3ff',
-              color: activeSubmodule === 'stage3' ? '#ffffff' : '#6d28d9',
-              border: activeSubmodule === 'stage3' ? '1px solid #6d28d9' : '1px solid #ddd6fe',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <span>⚡ Stage 3: Network & Security</span>
-            <span
-              style={{
-                fontSize: '0.75rem',
-                padding: '2px 7px',
-                borderRadius: 12,
-                background: activeSubmodule === 'stage3' ? 'rgba(255,255,255,0.25)' : '#ede9fe',
-                color: activeSubmodule === 'stage3' ? '#ffffff' : '#5b21b6',
-                fontWeight: 700,
-              }}
-            >
-              {submoduleCounts.stage3}
-            </span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setActiveSubmodule('completed')}
             style={{
               padding: '8px 16px',
@@ -1009,7 +926,7 @@ export default function AuditorAudits() {
               whiteSpace: 'nowrap',
             }}
           >
-            <span>🎉 Complete Audit (All 3 Stages)</span>
+            <span>🎉 Complete Audit (Both Stages)</span>
             <span
               style={{
                 fontSize: '0.75rem',
@@ -1531,9 +1448,7 @@ export default function AuditorAudits() {
                       ? 'Stage 1 (Hardware Verification)'
                       : activeSubmodule === 'stage2'
                       ? 'Stage 2 (Functional & Quality)'
-                      : activeSubmodule === 'stage3'
-                      ? 'Stage 3 (Network & Security)'
-                      : 'Complete Audit (All 3 Stages)'
+                      : 'Complete Audit (Both Stages)'
                   }.`
                 : 'No audits match the selected filter.'}
             </p>
@@ -1652,9 +1567,9 @@ export default function AuditorAudits() {
                         border: (detailAudit.isCompleted || countAnsweredStages(detailAudit) >= 3) ? '1px solid #bbf7d0' : '1px solid #bfdbfe',
                       }}
                     >
-                      {(detailAudit.isCompleted || countAnsweredStages(detailAudit) >= 3)
-                        ? '✅ Full Audit (3/3 Stages)'
-                        : `📦 Partial Audit (${countAnsweredStages(detailAudit)}/3 Stages)`}
+                      {(detailAudit.isCompleted || countAnsweredStages(detailAudit) >= 2)
+                        ? '✅ Full Audit (2/2 Stages)'
+                        : `📦 Partial Audit (${countAnsweredStages(detailAudit)}/2 Stages)`}
                     </span>
                   </div>
                 )}
@@ -1941,7 +1856,7 @@ export default function AuditorAudits() {
                     }}
                   >
                     <span>
-                      ℹ️ <strong>Remaining Stages Pending:</strong> Only {countAnsweredStages(detailAudit)} of 3 stages have been submitted for this ATM.
+                      ℹ️ <strong>Remaining Stages Pending:</strong> Only {countAnsweredStages(detailAudit)} of 2 stages have been submitted for this ATM.
                     </span>
                     <button
                       onClick={() => {

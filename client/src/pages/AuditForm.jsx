@@ -758,7 +758,7 @@ export default function AuditForm() {
     setError('');
     setStageSuccessMessage('');
 
-    // Check all 3 stages for any unanswered question
+    // Check all active stages for any unanswered question
     const missing = [];
     stages.forEach((st, sIdx) => {
       const unanswered = (st.questions || []).filter(
@@ -779,7 +779,7 @@ export default function AuditForm() {
         .map((m) => `Stage ${m.stageIndex + 1} (${m.stageName}): ${m.count} question(s) incomplete`)
         .join('; ');
       setError(
-        `Cannot complete audit yet. All 3 stages must be 100% complete before Final Submission:\n${summaryMsg}`
+        `Cannot complete audit yet. All ${stages.length} stages must be 100% complete before Final Submission:\n${summaryMsg}`
       );
       // Auto-jump to the first incomplete stage
       setStageIndex(missing[0].stageIndex);
@@ -1793,7 +1793,7 @@ export default function AuditForm() {
           <span style={{ fontSize: '0.84rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>💡</span>
             <span>
-              <strong>Independent Stages:</strong> Fill and save each stage separately. Once all 3 stages are saved, they automatically merge into a single complete audit!
+              <strong>Independent Stages:</strong> Fill and save each stage separately. Once both stages are saved, they automatically merge into a single complete audit!
             </span>
           </span>
           <span

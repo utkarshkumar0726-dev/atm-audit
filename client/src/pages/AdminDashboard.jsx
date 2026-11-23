@@ -46,8 +46,9 @@ function hasStageActivity(audit, stageNum) {
 
 function isAuditComplete(audit) {
   if (audit.isCompleted) return true;
-  if (!audit || !Array.isArray(audit.stages) || audit.stages.length < 3) return false;
-  return audit.stages.every((st) => {
+  if (!audit || !Array.isArray(audit.stages) || audit.stages.length < 2) return false;
+  const activeStages = audit.stages.slice(0, 2);
+  return activeStages.every((st) => {
     const stats = getStageStats(st);
     return stats.total > 0 && stats.isComplete;
   });
@@ -147,13 +148,11 @@ export default function AdminDashboard() {
   const submoduleCounts = useMemo(() => {
     const stage1 = audits.filter((a) => hasStageActivity(a, 1)).length;
     const stage2 = audits.filter((a) => hasStageActivity(a, 2)).length;
-    const stage3 = audits.filter((a) => hasStageActivity(a, 3)).length;
     const completed = audits.filter((a) => isAuditComplete(a)).length;
     return {
       all: audits.length,
       stage1,
       stage2,
-      stage3,
       completed,
     };
   }, [audits]);
@@ -165,8 +164,6 @@ export default function AdminDashboard() {
       list = list.filter((a) => hasStageActivity(a, 1));
     } else if (activeSubmodule === 'stage2') {
       list = list.filter((a) => hasStageActivity(a, 2));
-    } else if (activeSubmodule === 'stage3') {
-      list = list.filter((a) => hasStageActivity(a, 3));
     } else if (activeSubmodule === 'completed') {
       list = list.filter((a) => isAuditComplete(a));
     }
@@ -212,7 +209,7 @@ export default function AdminDashboard() {
           <div>
             <h1 style={{ margin: 0 }}>Audit Management & Stages</h1>
             <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-              Track audits across Stage 1, Stage 2, Stage 3, and 100% Complete Audits.
+              Track audits across Stage 1, Stage 2, and 100% Complete Audits.
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -384,23 +381,6 @@ export default function AdminDashboard() {
 
           <div
             className="kpi-card"
-            onClick={() => setActiveSubmodule('stage3')}
-            style={{
-              cursor: 'pointer',
-              border: activeSubmodule === 'stage3' ? '2px solid #7c3aed' : '1px solid var(--color-border)',
-              background: activeSubmodule === 'stage3' ? '#f5f3ff' : 'white',
-            }}
-          >
-            <div className="kpi-header">
-              <span className="kpi-label">Stage 3: Network</span>
-              <span className="kpi-icon">⚡</span>
-            </div>
-            <div className="kpi-value">{submoduleCounts.stage3}</div>
-            <div className="kpi-subtext">ATMs with Stage 3 data</div>
-          </div>
-
-          <div
-            className="kpi-card"
             onClick={() => setActiveSubmodule('completed')}
             style={{
               cursor: 'pointer',
@@ -413,7 +393,7 @@ export default function AdminDashboard() {
               <span className="kpi-icon">🎉</span>
             </div>
             <div className="kpi-value" style={{ color: '#059669' }}>{submoduleCounts.completed}</div>
-            <div className="kpi-subtext">All 3 stages 100% complete</div>
+            <div className="kpi-subtext">Both stages 100% complete</div>
           </div>
         </div>
 
@@ -521,38 +501,6 @@ export default function AdminDashboard() {
               }}
             >
               {submoduleCounts.stage2}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSubmodule('stage3')}
-            style={{
-              padding: '10px 18px',
-              fontSize: '0.92rem',
-              fontWeight: 700,
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeSubmodule === 'stage3' ? '3px solid #7c3aed' : '3px solid transparent',
-              color: activeSubmodule === 'stage3' ? '#7c3aed' : '#64748b',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <span>⚡ Stage 3: Network & Security</span>
-            <span
-              style={{
-                fontSize: '0.74rem',
-                padding: '2px 8px',
-                borderRadius: 999,
-                background: activeSubmodule === 'stage3' ? '#ede9fe' : '#f1f5f9',
-                color: activeSubmodule === 'stage3' ? '#6d28d9' : '#64748b',
-              }}
-            >
-              {submoduleCounts.stage3}
             </span>
           </button>
 
@@ -743,9 +691,6 @@ export default function AdminDashboard() {
                   <th style={{ background: activeSubmodule === 'stage2' ? 'rgba(8, 145, 178, 0.08)' : 'transparent' }}>
                     🔄 Stage 2 (Functional)
                   </th>
-                  <th style={{ background: activeSubmodule === 'stage3' ? 'rgba(124, 58, 237, 0.08)' : 'transparent' }}>
-                    ⚡ Stage 3 (Security)
-                  </th>
                   <th>Audit Status</th>
                   <th>Last Updated</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
@@ -834,26 +779,6 @@ export default function AdminDashboard() {
                         </span>
                       </td>
 
-                      {/* Stage 3 */}
-                      <td style={{ background: activeSubmodule === 'stage3' ? 'rgba(124, 58, 237, 0.04)' : 'transparent' }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            padding: '3px 8px',
-                            borderRadius: 6,
-                            fontSize: '0.78rem',
-                            fontWeight: 700,
-                            background: s3Stats.isComplete ? '#dcfce7' : s3Stats.answered > 0 ? '#ede9fe' : '#f1f5f9',
-                            color: s3Stats.isComplete ? '#15803d' : s3Stats.answered > 0 ? '#6d28d9' : '#64748b',
-                            border: `1px solid ${s3Stats.isComplete ? '#bbf7d0' : s3Stats.answered > 0 ? '#ddd6fe' : '#e2e8f0'}`,
-                          }}
-                        >
-                          {s3Stats.isComplete ? '✅' : '⏳'} {s3Stats.answered}/{s3Stats.total || 12}
-                        </span>
-                      </td>
-
                       {/* Overall Status */}
                       <td>
                         <span
@@ -870,7 +795,7 @@ export default function AdminDashboard() {
                             border: `1px solid ${isDone ? '#bbf7d0' : '#fde68a'}`,
                           }}
                         >
-                          {isDone ? '🎉 Complete Audit' : `⏳ In Progress (${s1Stats.answered + s2Stats.answered + s3Stats.answered}/37)`}
+                          {isDone ? '🎉 Complete Audit' : `⏳ In Progress (${s1Stats.answered + s2Stats.answered}/25)`}
                         </span>
                       </td>
 

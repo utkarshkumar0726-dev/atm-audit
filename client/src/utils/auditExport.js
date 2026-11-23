@@ -95,7 +95,7 @@ export function extractAuditPhotos(audit) {
 export function countAnsweredStages(audit) {
   if (!audit || !Array.isArray(audit.stages)) return 0;
   let count = 0;
-  audit.stages.forEach((st) => {
+  audit.stages.slice(0, 2).forEach((st) => {
     const hasAnswer = (st.questions || []).some((q) => q.answer === 'yes' || q.answer === 'no');
     const hasPhotos = (st.questions || []).some((q) => q.photos && q.photos.length > 0);
     if (hasAnswer || hasPhotos) count++;
@@ -113,8 +113,8 @@ export function downloadSingleAuditCSV(audit) {
   const dateStr = audit.completedAt || audit.createdAt || new Date().toISOString();
   const formattedDate = new Date(dateStr).toLocaleString();
   const answeredCount = countAnsweredStages(audit);
-  const isComplete = audit.isCompleted || answeredCount >= 3;
-  const statusStr = isComplete ? 'COMPLETED (100%)' : `IN PROGRESS (${answeredCount}/3 Stages)`;
+  const isComplete = audit.isCompleted || answeredCount >= 2;
+  const statusStr = isComplete ? 'COMPLETED (100%)' : `IN PROGRESS (${answeredCount}/2 Stages)`;
 
   const { atmPhotos, inspectionPhotos, questionPhotos } = extractAuditPhotos(audit);
   const totalPhotos = atmPhotos.length + inspectionPhotos.length + questionPhotos.length;
@@ -224,7 +224,6 @@ export function downloadAuditsSummaryCSV(audits, submoduleTitle = 'All_Audits') 
     'STATUS',
     'STAGE 1 (HARDWARE)',
     'STAGE 2 (FUNCTIONAL)',
-    'STAGE 3 (SECURITY)',
     'TOTAL ANSWERED',
     'IS COMPLETED',
     'SUBMITTED DATE',
@@ -244,7 +243,6 @@ export function downloadAuditsSummaryCSV(audits, submoduleTitle = 'All_Audits') 
       const c = `${s.stageName || ''} ${s.stageId || ''}`.toLowerCase();
       if (num === 1) return idx === 0 || c.includes('hardware');
       if (num === 2) return idx === 1 || c.includes('functional');
-      if (num === 3) return idx === 2 || c.includes('network') || c.includes('security');
       return false;
     });
   }
@@ -252,9 +250,8 @@ export function downloadAuditsSummaryCSV(audits, submoduleTitle = 'All_Audits') 
   const rows = audits.map((a, index) => {
     const s1 = getStageAnsweredCount(findStage(a, 1));
     const s2 = getStageAnsweredCount(findStage(a, 2));
-    const s3 = getStageAnsweredCount(findStage(a, 3));
-    const totalAns = s1.answered + s2.answered + s3.answered;
-    const isDone = a.isCompleted ? 'YES (100%)' : 'NO (In Progress)';
+    const totalAns = s1.answered + s2.answered;
+    const isDone = (a.isCompleted || (s1.answered === s1.total && s2.answered === s2.total)) ? 'YES (100%)' : 'NO (In Progress)';
 
     return [
       index + 1,
@@ -263,11 +260,10 @@ export function downloadAuditsSummaryCSV(audits, submoduleTitle = 'All_Audits') 
       sanitizeCSV(a.area || a.atm?.area?.name || 'General'),
       sanitizeCSV(a.auditor?.name || a.auditor || 'Unknown'),
       sanitizeCSV(a.auditor?.username || ''),
-      sanitizeCSV(a.isCompleted ? 'Completed' : 'In Progress'),
+      sanitizeCSV(a.isCompleted || (s1.answered === s1.total && s2.answered === s2.total) ? 'Completed' : 'In Progress'),
       sanitizeCSV(`${s1.answered}/${s1.total || 10}`),
       sanitizeCSV(`${s2.answered}/${s2.total || 15}`),
-      sanitizeCSV(`${s3.answered}/${s3.total || 12}`),
-      sanitizeCSV(`${totalAns}/37`),
+      sanitizeCSV(`${totalAns}/25`),
       sanitizeCSV(isDone),
       sanitizeCSV(a.createdAt ? new Date(a.createdAt).toLocaleString() : ''),
       sanitizeCSV(a.updatedAt ? new Date(a.updatedAt).toLocaleString() : ''),

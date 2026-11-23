@@ -86,8 +86,8 @@ async function generateMasterAuditExcelBuffer(options = {}) {
     });
   }
 
-  // 3. Fetch canonical stages and checklist questions
-  const stages = await Stage.find().sort({ order: 1 }).lean();
+  // 3. Fetch canonical stages and checklist questions (only active stages: 1 & 2)
+  const stages = await Stage.find({ order: { $lt: 2 } }).sort({ order: 1 }).lean();
   const canonicalQuestions = [];
   for (const st of stages) {
     const questions = await ChecklistQuestion.find({ stage: st._id }).sort({ order: 1 }).lean();
@@ -147,7 +147,6 @@ async function generateMasterAuditExcelBuffer(options = {}) {
     'Auditor Username',
     'Stage 1: Hardware Result',
     'Stage 2: Functional Result',
-    'Stage 3: Network & Cyber Result',
     'Overall Compliance Result',
     'Compliance Score (%)',
     'Total Passed (YES)',
@@ -212,17 +211,6 @@ async function generateMasterAuditExcelBuffer(options = {}) {
       stats.vendorBreakdown[vendorName].audited++;
       stats.zoneBreakdown[zoneName].audited++;
 
-      if (audit.isCompleted) {
-        auditStatus = 'Completed (100%)';
-        stats.completedSites++;
-        stats.vendorBreakdown[vendorName].completed++;
-        stats.zoneBreakdown[zoneName].completed++;
-      } else {
-        auditStatus = 'In Progress';
-        stats.inProgressSites++;
-        stats.vendorBreakdown[vendorName].inProgress++;
-      }
-
       const dateObj = audit.completedAt || audit.updatedAt || audit.createdAt;
       auditDateStr = dateObj ? new Date(dateObj).toLocaleDateString('en-IN') : '-';
       auditorName = audit.auditor?.name || 'Assigned Auditor';
@@ -236,7 +224,6 @@ async function generateMasterAuditExcelBuffer(options = {}) {
         let stageNum = idx + 1;
         if (sName.includes('hardware') || sName.includes('stage 1')) stageNum = 1;
         else if (sName.includes('functional') || sName.includes('stage 2')) stageNum = 2;
-        else if (sName.includes('network') || sName.includes('cyber') || sName.includes('stage 3')) stageNum = 3;
         stageMap[stageNum] = st;
       });
 
@@ -262,11 +249,25 @@ async function generateMasterAuditExcelBuffer(options = {}) {
 
       const s1Eval = evaluateStage(stageMap[1]);
       const s2Eval = evaluateStage(stageMap[2]);
-      const s3Eval = evaluateStage(stageMap[3]);
 
       stage1Result = s1Eval.text;
       stage2Result = s2Eval.text;
-      stage3Result = s3Eval.text;
+
+      // Completion check based on the 2 active stages
+      const s1Complete = s1Eval.total > 0 && (s1Eval.passed + s1Eval.failed >= s1Eval.total);
+      const s2Complete = s2Eval.total > 0 && (s2Eval.passed + s2Eval.failed >= s2Eval.total);
+      const isCompleteAudit = audit.isCompleted || (s1Complete && s2Complete);
+
+      if (isCompleteAudit) {
+        auditStatus = 'Completed (100%)';
+        stats.completedSites++;
+        stats.vendorBreakdown[vendorName].completed++;
+        stats.zoneBreakdown[zoneName].completed++;
+      } else {
+        auditStatus = 'In Progress';
+        stats.inProgressSites++;
+        stats.vendorBreakdown[vendorName].inProgress++;
+      }
 
       // Extract all questions across stages
       let totalAnswered = 0;
@@ -354,7 +355,6 @@ async function generateMasterAuditExcelBuffer(options = {}) {
       cleanCell(auditorUsername),
       cleanCell(stage1Result),
       cleanCell(stage2Result),
-      cleanCell(stage3Result),
       cleanCell(overallResult),
       cleanCell(complianceScoreStr),
       passedCount,
@@ -546,7 +546,7 @@ async function generateMasterAuditExcelBuffer(options = {}) {
     `${Math.round((stats.auditedSites / totalScope) * 100)}%`,
   ]);
   summaryRows.push([
-    'Audits 100% Completed (All 3 Stages)',
+    'Audits 100% Completed (Both Stages)',
     stats.completedSites,
     `${Math.round((stats.completedSites / totalScope) * 100)}%`,
   ]);
@@ -616,7 +616,6 @@ async function generateMasterAuditExcelBuffer(options = {}) {
     { wch: 16 }, // Username
     { wch: 24 }, // Stage 1
     { wch: 24 }, // Stage 2
-    { wch: 24 }, // Stage 3
     { wch: 22 }, // Overall
     { wch: 16 }, // Compliance %
     { wch: 12 }, // Passed
