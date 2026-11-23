@@ -1143,6 +1143,19 @@ export default function AuditForm() {
                       </span>
                     </div>
                   ))}
+                  {(selectedAtm.docketNo || selectedAtm.remarks || selectedAtm.finding) && (
+                    <div style={{ padding: '8px 12px', background: '#fefce8', borderRadius: 6, border: '1px solid #fef08a', fontSize: '0.82rem', color: '#854d0e', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {selectedAtm.docketNo && selectedAtm.docketNo !== '-' && (
+                        <div>📋 <strong>Docket No:</strong> {selectedAtm.docketNo}</div>
+                      )}
+                      {selectedAtm.finding && selectedAtm.finding !== '-' && (
+                        <div>🔍 <strong>Finding:</strong> <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{selectedAtm.finding}</span></div>
+                      )}
+                      {selectedAtm.remarks && selectedAtm.remarks !== '-' && (
+                        <div>💬 <strong>Remarks:</strong> {selectedAtm.remarks}</div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {isEditingContact ? (
@@ -1456,6 +1469,19 @@ export default function AuditForm() {
                       </span>
                     </div>
                   ))}
+                  {(selectedAtm.docketNo || selectedAtm.remarks || selectedAtm.finding) && (
+                    <div style={{ padding: '8px 12px', background: '#fefce8', borderRadius: 6, border: '1px solid #fef08a', fontSize: '0.82rem', color: '#854d0e', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {selectedAtm.docketNo && selectedAtm.docketNo !== '-' && (
+                        <div>📋 <strong>Docket No:</strong> {selectedAtm.docketNo}</div>
+                      )}
+                      {selectedAtm.finding && selectedAtm.finding !== '-' && (
+                        <div>🔍 <strong>Finding:</strong> <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{selectedAtm.finding}</span></div>
+                      )}
+                      {selectedAtm.remarks && selectedAtm.remarks !== '-' && (
+                        <div>💬 <strong>Remarks:</strong> {selectedAtm.remarks}</div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {isEditingContact ? (

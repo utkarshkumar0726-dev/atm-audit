@@ -617,6 +617,23 @@ export default function AuditorDashboard() {
             </div>
           )}
 
+          {/* Additional Contacts */}
+          {Array.isArray(atm.additionalContacts) && atm.additionalContacts.length > 0 && (
+            <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {atm.additionalContacts.map((c, idx) => (
+                <div key={idx}>📞 {c.name}: {c.phone}</div>
+              ))}
+            </div>
+          )}
+
+          {/* Remarks / Finding */}
+          {(atm.finding || atm.remarks) && (
+            <div style={{ fontSize: '0.75rem', color: '#854d0e', background: '#fefce8', border: '1px solid #fef08a', padding: '4px 8px', borderRadius: 4, marginTop: 6, lineHeight: 1.35 }}>
+              {atm.finding && atm.finding !== '-' && <div><strong>Finding:</strong> {atm.finding}</div>}
+              {atm.remarks && atm.remarks !== '-' && <div><strong>Remarks:</strong> {atm.remarks}</div>}
+            </div>
+          )}
+
           {/* Audited timestamp note if audited */}
           {isAudited && (auditObj?.createdAt || atm.lastAuditedAt) && (() => {
             const answeredStages = countAnsweredStages(auditObj);

@@ -24,6 +24,9 @@ const atmSchema = new mongoose.Schema(
     link: { type: String, default: '', trim: true },
     links: { type: [String], default: [] },
     deviceId: { type: String, default: '', trim: true },
+    docketNo: { type: String, default: '', trim: true },
+    remarks: { type: String, default: '', trim: true },
+    finding: { type: String, default: '', trim: true },
   },
   { timestamps: true }
 );
